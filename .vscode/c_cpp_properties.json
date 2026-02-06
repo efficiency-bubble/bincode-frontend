@@ -1,0 +1,15 @@
+{
+    "configurations": [
+        {
+            "name": "Default",
+            "cppStandard": "c++26",
+            "includePath": [
+                "src/include",
+                "/usr/include/freetype2",
+                "${default}"
+            ],
+            "intelliSenseMode": "${default}"
+        }
+    ],
+    "version": 4
+}
