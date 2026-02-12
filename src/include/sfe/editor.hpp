@@ -1,63 +1,36 @@
 #pragma once
-#include<sgl/draw/line.hpp>
 #include<SDL3/SDL_events.h>
-#include"cursor.hpp"
 #include"uitree.hpp"
-#include"text.hpp"
 namespace sfe{
-    namespace detail{
-        template<typename T>
-        class Owned{
-            T v;
-            public:
-                template<typename ...A>
-                Owned(A&& ...a) : v(std::forward<A>(a)...){}
-                T& operator*(){
-                    return v;
-                }
-                const T& operator*() const{
-                    return v;
-                }
-                T* operator->(){
-                    return &v;
-                }
-                const T* operator->() const{
-                    return &v;
-                }
-        };
-    }
     class Editor{
-        sgl::LineDrawer ld;
-        sfe::SDFTextRenderer tr;
+        UICursor cursor;
+        GraphicsContext gc;
         // Owns the root for perf reasons (no need to store an extra pointer)
-        sfe::Breadcrumbs<VisualNode,detail::Owned<VisualNode>> cursor;
-        bool cursor_after;
-        void draw_node(const VisualNode& nd,cppp::fvec2& pos,sgl::CachedFont& cf,sgl::CoordinateMap& cm);
         void navigate(bool right,bool fast);
         public:
-            Editor(VisualNode&& root) : cursor(std::move(root)), cursor_after(false){}
-            void render_full(cppp::fvec2& pos,sgl::CachedFont& cf,sgl::CoordinateMap& cm){
-                draw_node(cursor.root(),pos,cf,cm);
+            Editor(VisualFunctionNode&& root,GraphicsContext&& gc) : cursor(std::move(root)), gc(std::move(gc)){}
+            void render_full(cppp::fvec2& pos){
+                cursor.trail().root().draw(gc,cursor,pos);
             }
             void enter(std::uint32_t c,bool from_right){
-                cursor.enter(c);
-                cursor_after = from_right;
+                cursor.trail().enter(c);
+                cursor.set_after(from_right);
             }
             const VisualNode& selected() const{
-                return cursor.top();
+                return cursor.trail().top();
             }
             VisualNode& selected(){
-                return cursor.top();
+                return cursor.trail().top();
             }
             void set_select_after(bool after){
-                cursor_after = after;
+                cursor.set_after(after);
             }
             bool selected_after() const{
-                return cursor_after;
+                return cursor.is_after();
             }
             void keydown(const SDL_KeyboardEvent&);
-            sfe::SDFTextRenderer& text_renderer(){
-                return tr;
+            const GraphicsContext& graphics_context() const{
+                return gc;
             }
     };
 }

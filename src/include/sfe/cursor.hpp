@@ -1,25 +1,8 @@
 #pragma once
 #include<concepts>
-#include<ranges>
 #include<vector>
 namespace sfe{
-    namespace detail{
-        template<typename T,typename E>
-        concept random_access_container_of = std::ranges::random_access_range<T> && std::same_as<std::ranges::range_value_t<T>,std::remove_cv_t<E>> && requires(T& t,std::size_t ind){
-            {t[ind]} -> std::same_as<E&>;
-        };
-        template<typename T>
-        concept NodeLike = requires(const T& t,T& mt){
-            {t.children()} -> random_access_container_of<const T>;
-            {mt.children()} -> random_access_container_of<T>;
-        };
-        template<typename T,typename V>
-        concept CPropPointerTo = requires(const T& t,T& mt){
-            {*t} -> std::same_as<const V&>;
-            {*mt} -> std::same_as<V&>;
-        };
-    }
-    template<detail::NodeLike T,detail::CPropPointerTo<T> Root>
+    template<typename T,typename Root>
     class Breadcrumbs{
         Root _root;
         struct Entry{
@@ -37,10 +20,10 @@ namespace sfe{
         public:
             Breadcrumbs(Root&& root) : _root(std::move(root)){}
             T& root(){
-                return *_root;
+                return _root;
             }
             const T& root() const{
-                return *_root;
+                return _root;
             }
             void home(){
                 path.clear();
@@ -49,16 +32,16 @@ namespace sfe{
                 return !path.empty();
             }
             const T& top() const{
-                return has_nesting()?*etop().node:*_root;
+                return has_nesting()?*etop().node:static_cast<const T&>(_root);
             }
             T& top(){
-                return has_nesting()?*etop().node:*_root;
+                return has_nesting()?*etop().node:static_cast<T&>(_root);
             }
             const T& top2() const{
-                return path.size()>1?*path[path.size()-2].node:*_root;
+                return path.size()>1?*path[path.size()-2].node:static_cast<const T&>(_root);
             }
             T& top2(){
-                return path.size()>1?*path[path.size()-2].node:*_root;
+                return path.size()>1?*path[path.size()-2].node:static_cast<T&>(_root);
             }
             void leave(){
                 path.pop_back();
@@ -80,6 +63,25 @@ namespace sfe{
             }
             void next_sibling(){
                 etop().node = &top2().children()[++etop().index];
+            }
+    };
+    template<typename T,typename Root>
+    class Cursor{
+        Breadcrumbs<T,Root> crumbs;
+        bool after;
+        public:
+            Cursor(Root&& root) : crumbs(std::move(root)){}
+            const Breadcrumbs<T,Root>& trail() const{
+                return crumbs;
+            }
+            Breadcrumbs<T,Root>& trail(){
+                return crumbs;
+            }
+            bool is_after() const{
+                return after;
+            }
+            void set_after(bool new_after){
+                after = new_after;
             }
     };
 }

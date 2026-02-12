@@ -3,7 +3,7 @@ namespace sfe{
     static cppp::fvec2 yf(cppp::fvec2 x){
         return {x.x(),-x.y()};
     }
-    void SDFTextRenderer::draw_text(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec3 color,sgl::CachedFont& cf,const sgl::CoordinateMap& cm) const{
+    void SDFTextRenderer::draw_text(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec3 color,const sgl::CachedFont& cf,const sgl::CoordinateMap& cm) const{
         for(auto it = sh.shape(text,cf.font());it;++it){
             auto& gl = cf.query(it.glyph());
             if(gl.bitmap()){
