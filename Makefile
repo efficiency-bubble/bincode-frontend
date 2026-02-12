@@ -1,4 +1,4 @@
-COMPOPT := -std=c++26 -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror -m64 -O0 -g -I"src/include" -I"/usr/include/freetype2" -I$(cppinclude) -fsanitize=address
+COMPOPT := -std=c++26 -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror -m64 -O0 -g -I"src/include" -I"/usr/include/freetype2" -I$(cppinclude) -fsanitize=address -fconcepts-diagnostics-depth=10
 FINALOPT := $(COMPOPT) -L$(cpplibs) -lsgl -lSDL3 -lglad -lfreetype -lfontconfig -lstbimage -lharfbuzz -lbbe
 LIBNAME := sfe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)
