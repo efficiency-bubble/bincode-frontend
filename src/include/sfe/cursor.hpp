@@ -19,10 +19,10 @@ namespace sfe{
         }
         public:
             Breadcrumbs(Root&& root) : _root(std::move(root)){}
-            T& root(){
+            Root& root(){
                 return _root;
             }
-            const T& root() const{
+            const Root& root() const{
                 return _root;
             }
             void home(){
@@ -70,7 +70,7 @@ namespace sfe{
         Breadcrumbs<T,Root> crumbs;
         bool after;
         public:
-            Cursor(Root&& root) : crumbs(std::move(root)){}
+            Cursor(Root&& root) : crumbs(std::move(root)), after(false){}
             const Breadcrumbs<T,Root>& trail() const{
                 return crumbs;
             }
