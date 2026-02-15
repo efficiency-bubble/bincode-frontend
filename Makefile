@@ -1,18 +1,29 @@
-COMPOPT := -std=c++26 -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Werror -m64 -O0 -g -I"src/include" -I"/usr/include/freetype2" -I$(cppinclude) -fsanitize=address -fconcepts-diagnostics-depth=10
+COMPOPT := -std=c++26 -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -Werror -m64 -I"src/include" -I"/usr/include/freetype2" -I$(cppinclude) -fconcepts-diagnostics-depth=10
+RELEASEOPT := -O3 -s
+DEBUGOPT := -O0 -fsanitize=address -g
 FINALOPT := $(COMPOPT) -L$(cpplibs) -lsgl -lSDL3 -lglad -lfreetype -lfontconfig -lstbimage -lharfbuzz -lbbe
 LIBNAME := sfe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)
 SOURCES := $(wildcard src/implementation/*.cpp) $(wildcard src/implementation/*/*.cpp)
 OBJECTS := $(patsubst src/implementation/%.cpp,obj/%.o,$(SOURCES))
+DEBUG_OBJECTS := $(patsubst src/implementation/%.cpp,obj/%_debug.o,$(SOURCES))
+all: lib/$(LIBNAME).a lib/$(LIBNAME)_debug.a
+	
 bin/%: src/%.cpp lib/$(LIBNAME).a
-	g++ $< lib/$(LIBNAME).a -o $@ $(FINALOPT)
+	g++ $< lib/$(LIBNAME).a -o $@ $(RELEASEOPT) $(FINALOPT)
+bin/%_debug: src/%.cpp lib/$(LIBNAME)_debug.a
+	g++ $< lib/$(LIBNAME)_debug.a -o $@ $(DEBUGOPT) $(FINALOPT)
 lib/$(LIBNAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
+lib/$(LIBNAME)_debug.a: $(DEBUG_OBJECTS)
+	ar rcs $@ $(DEBUG_OBJECTS)
 obj/%.o: src/implementation/%.cpp $(HEADERS)
-	g++ -c $< -o $@ $(COMPOPT)
+	g++ -c $< -o $@ $(COMPOPT) $(RELEASEOPT)
+obj/%_debug.o: src/implementation/%.cpp $(HEADERS)
+	g++ -c $< -o $@ $(COMPOPT) $(DEBUGOPT)
 setup:
 	mkdir lib
 	mkdir bin
 	mkdir obj
-.PHONY: setup
+.PHONY: setup all
 	
