@@ -5,6 +5,8 @@
             "label": "Compile",
             "command": "make",
             "args": [
+                "-j",
+                "7",
                 "bin/test"
             ],
             "problemMatcher": "$gcc"
