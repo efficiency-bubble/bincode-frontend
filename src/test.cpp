@@ -1,12 +1,18 @@
 #include<sfe/sfe.hpp>
 #include<sgl/sgl.hpp>
 #include<bbe/bbe.hpp>
-#include<bbe/targets/dfg.hpp>
+#include<bbe/targets/yasbepl.hpp>
+#include<cppp/static-functor.hpp>
+#include<bbe/formats/elf.hpp>
+#include<bbe/targets/x86.hpp>
 #include<bbe/inter/dfg.hpp>
+#include<bbe/inter/rtl.hpp>
 #include<cppp/tostring.hpp>
 #include<cppp/bfile.hpp>
+#include<cppp/swap.hpp>
 #include<cppp/rtl.hpp>
 #include<cppp/int.hpp>
+#include<dlfcn.h>
 #include<chrono>
 #include<print>
 using namespace std::literals;
@@ -33,76 +39,73 @@ bbe::ASTNode cmag(std::uint32_t magic,bbe::ASTNode&& arg){
     x.emplace(0,std::move(arg));
     return x;
 }
-template<std::size_t pack>
-void steal_lhs(sfe::VisualASTNode& outer_ui,bbe::ASTNode&& new_node){
-    bbe::ASTNode& outer = outer_ui.node();
-    bbe::ASTNode old_node{std::exchange(outer,std::move(new_node))};
-
-    sfe::VisualASTNode old_ui{std::exchange(outer_ui,outer)};
+void steal_lhs(sfe::VisualASTNode& ui,bbe::ASTNode&& node){
+    cppp::swap(node,ui.node());
+    // node is now old
+    sfe::VisualASTNode old_ui{ui.node(),sfe::VisualASTNode::no_populate};
+    cppp::swap(old_ui,ui);
     
-    bbe::ASTNode* inner;
-    if constexpr(pack){
-        inner = &(outer.children()[0uz] = {bbe::NodeType::PACK,pack});
-    }else{
-        inner = &outer;
-    }
-    old_ui.repoint(inner->children()[0uz] = std::move(old_node));
-    outer_ui.clear();
-    outer_ui.populate(std::move(old_ui));
+    old_ui.repoint(ui.node().children()[0] = std::move(node));
+    old_ui.rerender_children();
+    ui.populate(std::move(old_ui));
+}
+void builtin_unary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::Editor& ed){
+    steal_lhs(sel,{bbe::NodeType::CALL_BUILTIN,prim,1});
+    ed.subst_sel(sel);
+    ed.set_select_after(true);
+}
+void builtin_binary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::Editor& ed){
+    bool second = sel.type() != bbe::NodeType::NTYPE;
+    steal_lhs(sel,{bbe::NodeType::CALL_BUILTIN,prim,2});
+    sel.node().children()[1uz] = {bbe::NodeType::NTYPE};
+    sel.rerender_except_first();
+    ed.subst_sel(sel);
+    ed.enter(second,false);
 }
 bool keydown(sfe::Toast& err,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
+    bool shift = (ke.mod & SDL_KMOD_SHIFT);
     if(auto sel=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
         switch(ke.key){
-            case SDLK_EQUALS: {
-                bool second = sel->type() != bbe::NodeType::NTYPE;
-                steal_lhs<2uz>(*sel,{bbe::NodeType::CALL_BUILTIN,(ke.mod & SDL_KMOD_SHIFT)?10_u32:50_u32,1});
-                sel->node().children().front().children()[1uz] = {bbe::NodeType::NTYPE,0};
-                sel->populate<true>(1);
-                ed.enter(second,false);
+            case SDLK_EQUALS:
+                builtin_binary(*sel,shift?10_u32:50_u32,ed);
                 return true;
-            }
-            case SDLK_MINUS: if(!(ke.mod & SDL_KMOD_SHIFT)){
+            case SDLK_MINUS: if(!shift){
+                builtin_binary(*sel,11,ed);
+                return true;
+            }else break;
+            case SDLK_COMMA: if(shift){
+                builtin_binary(*sel,51,ed);
+                return true;
+            }else if(sel->type() == bbe::NodeType::PACK && ed.selected_after()){
+                sel->node().children().emplace({bbe::NodeType::NTYPE});
+                sel->rerender_children();
+                return true;
+            }else break;
+            case SDLK_1: if(shift && !ed.selected_after()){
+                builtin_unary(*sel,60,ed);
+                return true;
+            }else break;
+            case SDLK_3: if(shift){
+                builtin_unary(*sel,25,ed);
+                return true;
+            }else break;
+            case SDLK_9: if(shift){
+                builtin_binary(*sel,0,ed);
+                return true;
+            }else break;
+            case SDLK_SLASH: if(shift){
                 bool second = sel->type() != bbe::NodeType::NTYPE;
-                steal_lhs<2uz>(*sel,{bbe::NodeType::CALL_BUILTIN,11,1});
-                sel->node().children().front().children()[1uz] = {bbe::NodeType::NTYPE,0};
-                sel->populate<true>(1);
+                steal_lhs(*sel,{bbe::NodeType::FORK,3});
+                sel->node().children()[1uz] = {bbe::NodeType::NTYPE};
+                sel->node().children()[2uz] = {bbe::NodeType::NTYPE};
+                sel->rerender_except_first();
                 ed.enter(second,false);
                 return true;
             }else break;
-            case SDLK_COMMA: if(ke.mod & SDL_KMOD_SHIFT){
-                bool second = sel->type() != bbe::NodeType::NTYPE;
-                steal_lhs<2uz>(*sel,{bbe::NodeType::CALL_BUILTIN,51,1});
-                sel->node().children().front().children()[1uz] = {bbe::NodeType::NTYPE,0};
-                sel->populate<true>(1);
-                ed.enter(second,false);
-                return true;
-            }else break;
-            case SDLK_9: if(ke.mod & SDL_KMOD_SHIFT){
-                bool second = sel->type() != bbe::NodeType::NTYPE;
-                steal_lhs<2uz>(*sel,{bbe::NodeType::CALL_BUILTIN,0,1});
-                sel->node().children().front().children()[1uz] = {bbe::NodeType::NTYPE,0};
-                sel->populate<true>(1);
-                ed.enter(second,false);
-                return true;
-            }else break;
-            case SDLK_LEFTBRACKET: if(!(ke.mod & SDL_KMOD_SHIFT)){
-                bool second = sel->type() != bbe::NodeType::NTYPE;
-                steal_lhs<2uz>(*sel,{bbe::NodeType::CALL_BUILTIN,80,1});
-                sel->node().children().front().children()[1uz] = {bbe::NodeType::NTYPE,0};
-                sel->populate<true>(1);
-                ed.enter(second,false);
-                return true;
-            }else break;
-            case SDLK_SLASH: if(ke.mod & SDL_KMOD_SHIFT){
-                bool second = sel->type() != bbe::NodeType::NTYPE;
-                steal_lhs<0uz>(*sel,{bbe::NodeType::FORK,3});
-                sel->node().children()[1uz] = {bbe::NodeType::NTYPE,0};
-                sel->node().children()[2uz] = {bbe::NodeType::NTYPE,0};
-                sel->populate<false>(1);
-                sel->populate<false>(2);
-                ed.enter(second,false);
-                return true;
-            }else break;
+            case SDLK_LEFTBRACKET:
+                steal_lhs(*sel,{bbe::NodeType::PACKIND,0,1});
+                ed.set_select_after(true);
+                break;
             default:;
         }
         switch(sel->type()){
@@ -112,7 +115,7 @@ bool keydown(sfe::Toast& err,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
                     sel->setp32(1-sel->p32());
                 }
                 break;
-            case UINT32:
+            case UINT32: case FNSYM:
                 if(ed.selected_after()){
                     if(!(ke.mod&(SDL_KMOD_SHIFT|SDL_KMOD_CTRL|SDL_KMOD_ALT))){
                         switch(ke.key){
@@ -138,25 +141,38 @@ bool keydown(sfe::Toast& err,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
             case NTYPE:
                 switch(ke.key){
                     case SDLK_A:
-                        sel->node() = {bbe::NodeType::ARGV,0};
-                        sel->rerender();
+                        sel->node() = {bbe::NodeType::ARGV};
+                        sel->rerender_children();
                         ed.set_select_after(true);
                         break;
                     case SDLK_E:
-                        sel->node() = {bbe::NodeType::BOOL,0};
-                        sel->rerender();
+                        sel->node() = {bbe::NodeType::BOOL};
+                        sel->rerender_children();
                         ed.set_select_after(true);
                         break;
                     case SDLK_D:
-                        sel->node() = {bbe::NodeType::UINT32,0};
-                        sel->rerender();
+                        sel->node() = {bbe::NodeType::UINT32};
+                        sel->rerender_children();
                         ed.set_select_after(true);
                         break;
                     case SDLK_F:
-                        sel->node() = {bbe::NodeType::FNSYM,0};
-                        sel->rerender();
+                        sel->node() = {bbe::NodeType::FNSYM};
+                        sel->rerender_children();
                         ed.set_select_after(true);
                         break;
+                    case SDLK_X:
+                        sel->node() = {bbe::NodeType::PACKIND,0,1};
+                        sel->node().children().front() = {bbe::NodeType::ARGV};
+                        sel->rerender_children();
+                        ed.set_select_after(true);
+                        break;
+                    case SDLK_8: if(shift){
+                        sel->node() = {bbe::NodeType::PACK,0,1};
+                        sel->node().children().front() = {bbe::NodeType::NTYPE};
+                        sel->rerender_children();
+                        ed.set_select_after(true);
+                        break;
+                    }else break;
                     default:;
                 }
             default:;
@@ -164,8 +180,14 @@ bool keydown(sfe::Toast& err,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
     }
     return false;
 }
-void vdebug(const sfe::VisualASTNode& vn,cppp::str& dst){
-    dst.append(cppp::format<u8"{}"_ts>(std::to_underlying(vn.type())));
+using hrc = std::chrono::high_resolution_clock;
+using µs = std::chrono::duration<std::uint64_t,std::micro>;
+template<typename F>
+µs time_execution(const F& f){
+    auto begin = hrc::now();
+    f();
+    auto dur = hrc::now()-begin;
+    return std::chrono::duration_cast<µs>(dur);
 }
 int main(){
     SDL_SetAppMetadata("edBCC (SGL)",nullptr,"edbcc.cpp");
@@ -183,7 +205,7 @@ int main(){
     
     bbe::ProjectEntitiesPool proj;
     bbe::Function& fn = proj.function_pool()[proj.function_pool().emplace(nullptr)];
-    fn.ast() = {bbe::NodeType::NTYPE,0};
+    fn.ast() = {bbe::NodeType::NTYPE};
     sfe::Editor ed{{fn,0},sfe::GraphicsContext{code_font(),{1200,600},1.0f}};
     sfe::Toast err;
     while(true){
@@ -215,32 +237,90 @@ int main(){
                                     save.append(std::span{buf.data(),nread});
                                 }while(nread);
                                 fn.ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
-                                ed.root().rerender();
+                                ed.root().rerender_children();
                             }
                         }
                     }else{
                         if(e.key.key == SDLK_F5){
                             try{
-                                using hrc = std::chrono::high_resolution_clock;
-                                using µs = std::chrono::duration<std::uint64_t,std::micro>;
-                                bbe::inter::dfg::CompiledFunctionPool compiled{proj};
                                 cppp::str rbuf;
-                                auto begin = hrc::now();
-                                bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{20}}),rbuf);
-                                µs delta = std::chrono::duration_cast<µs>(hrc::now()-begin);
-                                if(delta.count() < 1000){
-                                    rbuf.append(cppp::format<u8" in {} µs"_ts>(delta.count()));
-                                }else{
-                                    rbuf.append(cppp::format<u8" in {:.2f} µs"_ts>(static_cast<float>(delta.count())/1000.0f));
+                                {
+                                    bbe::inter::dfg::CompiledFunctionPool compiled{proj};
+                                    µs delta = time_execution([&]{
+                                        bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{30}}),rbuf);
+                                    });
+                                    std::span<int> a;
+                                    if(delta.count() < 1000){
+                                        cppp::format_to<u8" in {} µs (dfg inter); "_ts>(rbuf,delta.count());
+                                    }else{
+                                        cppp::format_to<u8" in {:.2f} ms (dfg inter); "_ts>(rbuf,static_cast<float>(delta.count())/1000.0f);
+                                    }
+                                }
+                                {
+                                    bbe::inter::rtl::CompiledFunctionPool compiled{proj};
+                                    µs delta = time_execution([&]{
+                                        bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{30}}),rbuf);
+                                    });
+                                    if(delta.count() < 1000){
+                                        cppp::format_to<u8" in {} µs (rtl inter)"_ts>(rbuf,delta.count());
+                                    }else{
+                                        cppp::format_to<u8" in {:.2f} ms (rtl inter)"_ts>(rbuf,static_cast<float>(delta.count())/1000.0f);
+                                    }
                                 }
                                 err.reset(std::move(rbuf),3s);
                             }catch(const std::exception& e){
                                 err.reset(cppp::tou8(std::string_view(e.what())),3s);
                             }
+                        }else if(e.key.key == SDLK_F6){
+                            try{
+                                cppp::str rbuf;
+                                bbe::targets::dfg::DataFlowGraph dfg{ed.root().func()};
+                                bbe::targets::yasbepl::compile(dfg,rbuf);
+                                err.reset(std::move(rbuf),3s);
+                            }catch(const std::exception& e){
+                                err.reset(cppp::tou8(std::string_view(e.what())),3s);
+                            }
                         }else if(e.key.key == SDLK_F7){
+                            try{
+                                cppp::str rbuf;
+                                {
+                                    bbe::formats::elf::Elf elf;
+                                    bbe::targets::x86::Program prog;
+                                    {
+                                        bbe::targets::x86::Function fn{ed.root().func()};
+                                        cppp::format_to<u8"{} bytes; returns: "_ts>(rbuf,fn.instructions().size());
+                                        prog.export_function(u8"example"s,std::move(fn));
+                                    }
+                                    elf.add_text(prog);
+                                    cppp::BinaryFile outf{u8"testprog_c.o"s,std::ios_base::out|std::ios_base::binary|std::ios_base::trunc};
+                                    
+                                    outf.write(elf.encode());
+                                }
+                                if(int ret=std::system("gcc -shared testprog_c.o -o testprog_c.so")){
+                                    throw std::runtime_error(std::format("GCC failed with: {}"sv,ret));
+                                }
+                                if(std::unique_ptr<void,cppp::static_functor<dlclose>> dl{dlopen("./testprog_c.so",RTLD_LAZY)}){
+                                    if(void* sym = dlsym(dl.get(),"example")){
+                                        cppp::format_to<u8"{}"_ts>(rbuf,std::bit_cast<std::uint32_t(*)()>(sym)());
+                                    }else{
+                                        throw std::runtime_error("symbol not found in DLL"s);
+                                    }
+                                }else{
+                                    throw std::runtime_error("can't open DLL"s);
+                                }
+                                err.reset(std::move(rbuf),3s);
+                            }catch(const std::exception& e){
+                                err.reset(cppp::tou8(std::string_view(e.what())),3s);
+                            }
+                        }else if(e.key.key == SDLK_F8){
                             cppp::str rbuf;
-                            vdebug(ed.root().child(),rbuf);
+                            if(auto* vn=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
+                                cppp::format_to<u8"{:p} = {}"_ts>(rbuf,static_cast<void*>(vn),std::to_underlying(vn->type()));
+                            }
                             std::println("{}"sv,cppp::cview(rbuf));
+                        }else if(e.key.key == SDLK_F9){
+                            ed.home();
+                            ed.root().rerender_children();
                         }else if(!keydown(err,ed,e.key)){
                             ed.keydown(e.key);
                         }

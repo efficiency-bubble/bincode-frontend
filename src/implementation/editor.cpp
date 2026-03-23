@@ -52,7 +52,7 @@ namespace sfe{
                     cursor.trail().leave();
                 }
                 static_cast<VisualASTNode&>(selected()).node() = {bbe::NodeType::NTYPE,0};
-                selected().rerender();
+                selected().rerender_children();
                 break;
         }
     }

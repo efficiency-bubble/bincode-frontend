@@ -1,7 +1,7 @@
 COMPOPT := -std=c++26 -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -Werror -m64 -I"src/include" -I"/usr/include/freetype2" -I$(cppinclude) -fconcepts-diagnostics-depth=10
 RELEASEOPT := -O3 -s
-DEBUGOPT := -O0 -fsanitize=address -g
-FINALOPT := $(COMPOPT) -L$(cpplibs) -lsgl -lSDL3 -lglad -lfreetype -lfontconfig -lstbimage -lharfbuzz -lbbe
+DEBUGOPT := -O0 -g
+FINALOPT := $(COMPOPT) -L$(cpplibs) -lsgl -lSDL3 -lglad -lfreetype -lfontconfig -lstbimage -lharfbuzz
 LIBNAME := sfe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)
 SOURCES := $(wildcard src/implementation/*.cpp) $(wildcard src/implementation/*/*.cpp)
@@ -10,9 +10,9 @@ DEBUG_OBJECTS := $(patsubst src/implementation/%.cpp,obj/%_debug.o,$(SOURCES))
 all: lib/$(LIBNAME).a lib/$(LIBNAME)_debug.a
 	
 bin/%: src/%.cpp lib/$(LIBNAME).a
-	g++ $< lib/$(LIBNAME).a -o $@ $(RELEASEOPT) $(FINALOPT)
+	g++ $< lib/$(LIBNAME).a -o $@ $(RELEASEOPT) $(FINALOPT) -lbbe
 bin/%_debug: src/%.cpp lib/$(LIBNAME)_debug.a
-	g++ $< lib/$(LIBNAME)_debug.a -o $@ $(DEBUGOPT) $(FINALOPT)
+	g++ $< lib/$(LIBNAME)_debug.a -o $@ $(DEBUGOPT) $(FINALOPT) -lbbe_debug
 lib/$(LIBNAME).a: $(OBJECTS)
 	ar rcs $@ $(OBJECTS)
 lib/$(LIBNAME)_debug.a: $(DEBUG_OBJECTS)

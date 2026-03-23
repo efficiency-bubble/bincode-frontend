@@ -4,16 +4,17 @@
 #include<sgl/draw/line.hpp>
 #include<bbe/function.hpp>
 #include<cppp/vector.hpp>
+#include<cppp/swap.hpp>
 #include<bbe/ast.hpp>
 #include<concepts>
 #include<cstdint>
+#include<ranges>
 #include<vector>
 #include"cursor.hpp"
-#include"text.hpp"
 namespace sfe{
     class GraphicsContext{
         sgl::LineDrawer ld;
-        sfe::SDFTextRenderer tr;
+        sgl::SDFTextRenderer tr;
         sgl::CachedFont cf;
         sgl::CoordinateMap cm;
         float scale;
@@ -49,11 +50,11 @@ namespace sfe{
         public:
             template<typename Self>
             cppp::erased_span<Self> children(this Self& v){
-                return v.do_children().template downcast<Self>();
+                return static_cast<cppp::copy_const_t<Self,VisualNode>&>(v).do_children().template downcast<Self>();
             }
             virtual void draw(const GraphicsContext& gc,const UICursor& cursor,cppp::fvec2& pos) const = 0;
             virtual bool fast() const = 0;
-            virtual void rerender() = 0;
+            virtual void rerender_children() = 0;
         protected:
             using children_t = cppp::erased_span<VisualNode>;
             using const_children_t = cppp::erased_span<const VisualNode>;
@@ -64,24 +65,14 @@ namespace sfe{
     class VisualASTNode final : public VisualNode{
         bbe::ASTNode* nd;
         std::vector<VisualASTNode> _children;
-        template<bool deep>
-        bbe::impl::ASTChildren& child_array(){
-            if constexpr(deep){
-                return nd->children().front().children();
-            }else{
-                return nd->children();
-            }
+        friend void swap(VisualASTNode& lhs,VisualASTNode& rhs){
+            cppp::swap(lhs.nd,rhs.nd);
+            cppp::swap(lhs._children,rhs._children);
         }
-        bbe::impl::ASTChildren& find_child_array(){
-            switch(nd->type()){
-                using enum bbe::NodeType;
-                case CALL_BUILTIN:
-                    return child_array<true>();
-                default:
-                    return child_array<false>();
-            }
-        }
+        struct no_populate_t{};
         public:
+            constexpr static no_populate_t no_populate{};
+            VisualASTNode(bbe::ASTNode& nd,no_populate_t) : nd(&nd){}
             VisualASTNode(bbe::ASTNode& nd) : nd(&nd){
                 populate();
             }
@@ -93,18 +84,22 @@ namespace sfe{
                 _children.clear();
             }
             void populate(){
-                for(auto& c : find_child_array()){
+                for(auto& c : nd->children()){
                     _children.emplace_back(c);
                 }
             }
-            template<bool deep>
-            void populate(std::uint32_t i){
-                _children.emplace_back(child_array<deep>()[i]);
-            }
+            // for lhs stealing
             void populate(VisualASTNode&& vn){
                 _children.emplace_back(std::move(vn));
             }
-            void rerender() override{
+            // for lhs stealing
+            void rerender_except_first(){
+                for(auto& c : nd->children() | std::views::drop(1uz)){
+                    _children.emplace_back(c);
+                }
+            }
+            std::uint32_t priority() const;
+            void rerender_children() override{
                 clear();
                 populate();
             }
@@ -127,10 +122,10 @@ namespace sfe{
                 nd->setp32(prim);
             }
         protected:
-            const_children_t do_children() const{
+            const_children_t do_children() const override{
                 return std::span{_children};
             }
-            children_t do_children(){
+            children_t do_children() override{
                 return std::span{_children};
             }
     };
@@ -141,14 +136,17 @@ namespace sfe{
         public:
             VisualFunctionNode(bbe::Function& f,std::uint32_t id) : fn(&f), _child(f.ast()), id(id){}
             void draw(const GraphicsContext& gc,const UICursor& cursor,cppp::fvec2& pos) const override;
+            const bbe::Function& func() const{
+                return *fn;
+            }
             const VisualASTNode& child() const{
                 return _child;
             }
             bool fast() const{
                 return false;
             }
-            void rerender() override{
-                _child.rerender();
+            void rerender_children() override{
+                _child.rerender_children();
             }
         protected:
             children_t do_children() override{

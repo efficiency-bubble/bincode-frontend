@@ -21,6 +21,15 @@ namespace sfe{
             void render_full(cppp::fvec2& pos) const{
                 root().draw(gc,cursor,pos);
             }
+            void leave(){
+                cursor.trail().leave();
+            }
+            void subst_sel(VisualASTNode& other){
+                cursor.trail().subst(other);
+            }
+            void home(){
+                cursor.trail().home();
+            }
             void enter(std::uint32_t c,bool from_right){
                 cursor.trail().enter(c);
                 cursor.set_after(from_right);

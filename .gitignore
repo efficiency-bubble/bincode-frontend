@@ -2,3 +2,5 @@ bin
 lib
 obj
 .vscode/settings.json
+testprog_c.o
+testprog_c.so

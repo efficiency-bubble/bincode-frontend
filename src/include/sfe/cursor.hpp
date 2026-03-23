@@ -1,6 +1,7 @@
 #pragma once
 #include<concepts>
 #include<vector>
+#include<cstdint>
 namespace sfe{
     template<typename T,typename Root>
     class Breadcrumbs{
@@ -42,6 +43,9 @@ namespace sfe{
             }
             T& top2(){
                 return path.size()>1?*path[path.size()-2].node:static_cast<T&>(_root);
+            }
+            void subst(T& other){
+                etop().node = &other;
             }
             void leave(){
                 path.pop_back();
