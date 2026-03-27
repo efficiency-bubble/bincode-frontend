@@ -12,7 +12,7 @@
 #include<cppp/swap.hpp>
 #include<cppp/rtl.hpp>
 #include<cppp/int.hpp>
-#include<dlfcn.h>
+#include<stdio.h>
 #include<chrono>
 #include<print>
 using namespace std::literals;
@@ -238,6 +238,7 @@ int main(){
                                 }while(nread);
                                 fn.ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
                                 ed.root().rerender_children();
+                                ed.home();
                             }
                         }
                     }else{
@@ -274,21 +275,12 @@ int main(){
                         }else if(e.key.key == SDLK_F6){
                             try{
                                 cppp::str rbuf;
-                                bbe::targets::dfg::DataFlowGraph dfg{ed.root().func()};
-                                bbe::targets::yasbepl::compile(dfg,rbuf);
-                                err.reset(std::move(rbuf),3s);
-                            }catch(const std::exception& e){
-                                err.reset(cppp::tou8(std::string_view(e.what())),3s);
-                            }
-                        }else if(e.key.key == SDLK_F7){
-                            try{
-                                cppp::str rbuf;
                                 {
                                     bbe::formats::elf::Elf elf;
                                     bbe::targets::x86::Program prog;
                                     {
                                         bbe::targets::x86::Function fn{ed.root().func()};
-                                        cppp::format_to<u8"{} bytes; returns: "_ts>(rbuf,fn.instructions().size());
+                                        cppp::format_to<u8"{} bytes; "_ts>(rbuf,fn.instructions().size());
                                         prog.export_function(u8"example"s,std::move(fn));
                                     }
                                     elf.add_text(prog);
@@ -296,29 +288,32 @@ int main(){
                                     
                                     outf.write(elf.encode());
                                 }
-                                if(int ret=std::system("gcc -shared testprog_c.o -o testprog_c.so")){
+                                if(int ret=std::system("g++ -O3 -std=c++26 -s timing_helper.cpp testprog_c.o -o testprog_c")){
                                     throw std::runtime_error(std::format("GCC failed with: {}"sv,ret));
                                 }
-                                if(std::unique_ptr<void,cppp::static_functor<dlclose>> dl{dlopen("./testprog_c.so",RTLD_LAZY)}){
-                                    if(void* sym = dlsym(dl.get(),"example")){
-                                        cppp::format_to<u8"{}"_ts>(rbuf,std::bit_cast<std::uint32_t(*)()>(sym)());
-                                    }else{
-                                        throw std::runtime_error("symbol not found in DLL"s);
+                                if(std::unique_ptr<std::FILE,cppp::static_functor<pclose>> dl{popen(
+                                    reinterpret_cast<const char*>(cppp::format<u8"./testprog_c {}"_ts>(30).c_str())
+                                    ,"r")}){
+                                    std::array<char8_t,1024uz> buf;
+                                    while(std::size_t nr = std::fread(buf.data(),1,buf.size(),dl.get())){
+                                        rbuf.append(buf.data(),nr);
                                     }
+                                    if(std::ferror(dl.get())) rbuf.append(u8"<READ ERROR>"s);
+                                    rbuf.append(u8" (x86_64)"s);
                                 }else{
-                                    throw std::runtime_error("can't open DLL"s);
+                                    throw std::runtime_error("can't start testprog"s);
                                 }
                                 err.reset(std::move(rbuf),3s);
                             }catch(const std::exception& e){
                                 err.reset(cppp::tou8(std::string_view(e.what())),3s);
                             }
-                        }else if(e.key.key == SDLK_F8){
+                        }else if(e.key.key == SDLK_F7){
                             cppp::str rbuf;
                             if(auto* vn=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
                                 cppp::format_to<u8"{:p} = {}"_ts>(rbuf,static_cast<void*>(vn),std::to_underlying(vn->type()));
                             }
                             std::println("{}"sv,cppp::cview(rbuf));
-                        }else if(e.key.key == SDLK_F9){
+                        }else if(e.key.key == SDLK_F8){
                             ed.home();
                             ed.root().rerender_children();
                         }else if(!keydown(err,ed,e.key)){

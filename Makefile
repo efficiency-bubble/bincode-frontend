@@ -1,5 +1,5 @@
 COMPOPT := -std=c++26 -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -Werror -m64 -I"src/include" -I"/usr/include/freetype2" -I$(cppinclude) -fconcepts-diagnostics-depth=10
-RELEASEOPT := -O3 -s
+RELEASEOPT := -O3 -s -DNDEBUG
 DEBUGOPT := -O0 -g
 FINALOPT := $(COMPOPT) -L$(cpplibs) -lsgl -lSDL3 -lglad -lfreetype -lfontconfig -lstbimage -lharfbuzz
 LIBNAME := sfe
