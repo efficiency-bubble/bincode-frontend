@@ -23,22 +23,6 @@ sgl::CachedFont code_font(){
     gc.font().init_width_pt(19<<6uz,191,191);
     return gc;
 }
-bbe::ASTNode u32(std::uint32_t val){
-    return {bbe::NodeType::UINT32,val,0};
-}
-template<typename ...T>
-bbe::ASTNode pack(T&& ...children){
-    bbe::ASTNode x{bbe::NodeType::PACK,sizeof...(T)};
-    [&]<std::size_t ...i>(std::index_sequence<i...>){
-        (... , x.emplace(i,std::forward<T>(children)));
-    }(std::index_sequence_for<T...>());
-    return x;
-}
-bbe::ASTNode cmag(std::uint32_t magic,bbe::ASTNode&& arg){
-    bbe::ASTNode x{bbe::NodeType::CALL_BUILTIN,magic,1};
-    x.emplace(0,std::move(arg));
-    return x;
-}
 void steal_lhs(sfe::VisualASTNode& ui,bbe::ASTNode&& node){
     cppp::swap(node,ui.node());
     // node is now old
@@ -62,7 +46,7 @@ void builtin_binary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::Editor& ed){
     ed.subst_sel(sel);
     ed.enter(second,false);
 }
-bool keydown(sfe::Toast& err,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
+bool keydown(sfe::Toast& toast,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
     bool shift = (ke.mod & SDL_KMOD_SHIFT);
     if(auto sel=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
         switch(ke.key){
@@ -115,7 +99,7 @@ bool keydown(sfe::Toast& err,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
                     sel->setp32(1-sel->p32());
                 }
                 break;
-            case UINT32: case FNSYM:
+            case UINT32: case FNSYM: case PACKIND:
                 if(ed.selected_after()){
                     if(!(ke.mod&(SDL_KMOD_SHIFT|SDL_KMOD_CTRL|SDL_KMOD_ALT))){
                         switch(ke.key){
@@ -129,7 +113,7 @@ bool keydown(sfe::Toast& err,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
                             case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9:
                                 if((static_cast<std::uint64_t>(sel->p32())*10+static_cast<std::uint64_t>(ke.key-SDLK_0))>static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max())){
                                     using namespace std::chrono_literals;
-                                    err.reset(u8"Overflow!"s,810ms);
+                                    toast.reset(u8"Overflow!"s,810ms);
                                 }else{
                                     sel->setp32(sel->p32()*10 + static_cast<std::uint32_t>(ke.key-SDLK_0));
                                 }
@@ -170,7 +154,7 @@ bool keydown(sfe::Toast& err,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
                         sel->node() = {bbe::NodeType::PACK,0,1};
                         sel->node().children().front() = {bbe::NodeType::NTYPE};
                         sel->rerender_children();
-                        ed.set_select_after(true);
+                        ed.enter(0,false);
                         break;
                     }else break;
                     default:;
@@ -189,6 +173,83 @@ template<typename F>
     auto dur = hrc::now()-begin;
     return std::chrono::duration_cast<µs>(dur);
 }
+sfe::Toast toast;
+void save(sfe::Editor& ed){
+    cppp::bytes save;
+    static_cast<const sfe::VisualFunctionNode&>(ed.root()).func().ast().serialize(save);
+    cppp::BinaryFile bf{u8"testprog"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
+    bf.write(save);
+    toast.reset(cppp::format<u8"Saved {} bytes"_ts>(save.size()),1s);
+}
+void load(sfe::Editor& ed){
+    cppp::BinaryFile bf{u8"testprog"s,std::ios_base::in|std::ios_base::binary};
+    cppp::bytes save;
+    std::array<std::byte,1024uz> buf;
+    std::size_t nread;
+    do{
+        nread = bf.read(buf);
+        save.append(std::span{buf.data(),nread});
+    }while(nread);
+    static_cast<sfe::VisualFunctionNode&>(ed.root()).func().ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
+    ed.root().rerender_children();
+    ed.home();
+}
+cppp::str strtype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
+    if(tid == tdb.T_ERROR){
+        return u8"error-type"s;
+    }
+    cppp::str tag;
+    const bbe::TypeInfo& t = tdb[tid];
+    switch(t.type()){
+        using enum bbe::FundamentalTypeType;
+        case VOID:
+            return u8"void"s;
+        case UNSIGNED_INTEGRAL:
+            if(t.size() == 1){
+                tag = u8"bool"s; // TODO: special case bool better
+            }else{
+                tag = cppp::format<u8"uint{}_t"_ts>(t.size()*8);
+            }
+            break;
+        case FUNCTION: {
+            const bbe::FunctionSignature& sig = t.function_signature();
+            tag = cppp::format<u8"{} => {}"_ts>(strtype(sig.parameter(),tdb),strtype(sig.return_type(),tdb));
+            break;
+        }
+        case PACK:
+            tag = u8"pack["s;
+            for(const auto& c : t.pack_contents().types()){
+                tag.append(strtype(c,tdb));
+                tag.append(u8", "sv);
+            }
+            tag.pop_back();
+            tag.back() = u8']';
+            break;
+        default:
+            tag = u8"unknown"s;
+            break;
+    }
+    return cppp::format<u8"{} ({}/{}:{})"_ts>(tag,tdb[tid].size(),tdb[tid].alignment(),tdb[tid].stride());
+}
+cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
+    switch(tid){
+        case bbe::TypeDatabase::T_VOID:
+            return {0.7f};
+        case bbe::TypeDatabase::T_UINT32:
+            return {0.23137254901960785f,0.8509803921568627f,0.9215686274509803f};
+        case bbe::TypeDatabase::T_UINT64:
+            return {0.9215686274509803f,0.7647058823529411f,0.23137254901960785f};
+        case bbe::TypeDatabase::T_BOOL:
+            return {0.23529411764705882f,0.9176470588235294f,0.47058823529411764f};
+        case bbe::TypeDatabase::T_ERROR:
+            return {1.0f,0.0f,0.0f};
+        default:
+            if(tdb[tid].type() == bbe::FundamentalTypeType::FUNCTION){
+                return {0.6274509803921569f,0.9568627450980393f,0.2235294117647059f};
+            }
+            return {0.8588235294117647f, 0.23137254901960785f, 0.9215686274509803f};
+    }
+}
 int main(){
     SDL_SetAppMetadata("edBCC (SGL)",nullptr,"edbcc.cpp");
     SDL_InitSubSystem(SDL_INIT_VIDEO);
@@ -204,45 +265,72 @@ int main(){
     SDL_GL_SetSwapInterval(-1);
     
     bbe::ProjectEntitiesPool proj;
-    bbe::Function& fn = proj.function_pool()[proj.function_pool().emplace(nullptr)];
+    bbe::TypeDatabase tdb;
+    bbe::type_id b_uint32{tdb.T_UINT32};
+    bbe::Function& fn = proj.functions()[proj.functions().emplace(bbe::FunctionSignature{b_uint32,{b_uint32}})];
     fn.ast() = {bbe::NodeType::NTYPE};
-    sfe::Editor ed{{fn,0},sfe::GraphicsContext{code_font(),{1200,600},1.0f}};
-    sfe::Toast err;
+    sfe::GraphicsContext gc{code_font(),{1200,600},1.0f};
+    sfe::Editor ed{{fn,0}};
+    
+    sfe::CommandSet cmds;
+    constexpr bool(*TRUE_FN)(sfe::Editor&) = [](sfe::Editor&)static{return true;};
+    cmds.add(u8"exit"s,{TRUE_FN,[](sfe::Editor&)static{
+        SDL_Event ev{.quit={
+            .type=SDL_EVENT_QUIT,
+            .reserved=0,
+            .timestamp=SDL_GetTicksNS()
+        }};
+        SDL_PushEvent(&ev);
+    }});
+    cmds.add(u8"save"s,{TRUE_FN,save});
+    cmds.add(u8"load"s,{TRUE_FN,load});
+    sfe::CommandSelectorPanel csp{cmds,ed};
+    bool csp_open = false;
+    
+    fn.ast().recursively_recalculate_result_type(tdb,proj.functions());
     while(true){
         for(const auto& e : sgl::events()){
             switch(e.type){
                 case SDL_EVENT_QUIT: goto cleanup;
                 case SDL_EVENT_WINDOW_RESIZED:
                     glViewport(0,0,e.window.data1,e.window.data2);
-                    ed.update_window(static_cast<std::uint32_t>(e.window.data1),static_cast<std::uint32_t>(e.window.data2));
+                    gc.update_window(static_cast<std::uint32_t>(e.window.data1),static_cast<std::uint32_t>(e.window.data2));
+                    break;
+                case SDL_EVENT_TEXT_INPUT:
+                    csp.append(e.text.text);
                     break;
                 case SDL_EVENT_KEY_DOWN:
-                    if(e.key.mod & SDL_KMOD_CTRL){
-                        switch(e.key.key){
-                            case SDLK_S: {
-                                cppp::bytes save;
-                                fn.ast().serialize(save);
-                                cppp::BinaryFile bf{u8"testprog"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
-                                bf.write(save);
-                                err.reset(cppp::format<u8"Saved {} bytes"_ts>(save.size()),1s);
-                                break;
-                            }
-                            case SDLK_O: {
-                                cppp::BinaryFile bf{u8"testprog"s,std::ios_base::in|std::ios_base::binary};
-                                cppp::bytes save;
-                                std::array<std::byte,1024uz> buf;
-                                std::size_t nread;
-                                do{
-                                    nread = bf.read(buf);
-                                    save.append(std::span{buf.data(),nread});
-                                }while(nread);
-                                fn.ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
-                                ed.root().rerender_children();
-                                ed.home();
-                            }
-                        }
-                    }else{
-                        if(e.key.key == SDLK_F5){
+                    if(e.key.mod & SDL_KMOD_CTRL) switch(e.key.key){
+                        case SDLK_S:
+                            save(ed);
+                            break;
+                        case SDLK_O:
+                            load(ed);
+                            break;
+                    }else if(csp_open) switch(e.key.key){
+                        case SDLK_RETURN:
+                            csp.exec();
+                            [[fallthrough]];
+                        case SDLK_ESCAPE:
+                            csp_open = false;
+                            csp.clear();
+                            win.stop_input();
+                            break;
+                        case SDLK_BACKSPACE:
+                            csp.backspace();
+                            break;
+                        case SDLK_DOWN:
+                            csp.next();
+                            break;
+                        case SDLK_UP:
+                            csp.prev();
+                            break;
+                    }else switch(e.key.key){
+                        case SDLK_F1:
+                            csp_open = true;
+                            win.start_input();
+                            break;
+                        case SDLK_F5:
                             try{
                                 cppp::str rbuf;
                                 {
@@ -268,18 +356,19 @@ int main(){
                                         cppp::format_to<u8" in {:.2f} ms (rtl inter)"_ts>(rbuf,static_cast<float>(delta.count())/1000.0f);
                                     }
                                 }
-                                err.reset(std::move(rbuf),3s);
+                                toast.reset(std::move(rbuf),3s);
                             }catch(const std::exception& e){
-                                err.reset(cppp::tou8(std::string_view(e.what())),3s);
+                                toast.reset(cppp::tou8(std::string_view(e.what())),3s);
                             }
-                        }else if(e.key.key == SDLK_F6){
+                            break;
+                        case SDLK_F6:
                             try{
                                 cppp::str rbuf;
                                 {
                                     bbe::formats::elf::Elf elf;
                                     bbe::targets::x86::Program prog;
                                     {
-                                        bbe::targets::x86::Function fn{ed.root().func()};
+                                        bbe::targets::x86::Function fn{ed.root().func(),tdb};
                                         cppp::format_to<u8"{} bytes; "_ts>(rbuf,fn.instructions().size());
                                         prog.export_function(u8"example"s,std::move(fn));
                                     }
@@ -303,30 +392,44 @@ int main(){
                                 }else{
                                     throw std::runtime_error("can't start testprog"s);
                                 }
-                                err.reset(std::move(rbuf),3s);
+                                toast.reset(std::move(rbuf),3s);
                             }catch(const std::exception& e){
-                                err.reset(cppp::tou8(std::string_view(e.what())),3s);
+                                toast.reset(cppp::tou8(std::string_view(e.what())),3s);
                             }
-                        }else if(e.key.key == SDLK_F7){
+                            break;
+                        case SDLK_F7: {
                             cppp::str rbuf;
                             if(auto* vn=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
                                 cppp::format_to<u8"{:p} = {}"_ts>(rbuf,static_cast<void*>(vn),std::to_underlying(vn->type()));
                             }
                             std::println("{}"sv,cppp::cview(rbuf));
-                        }else if(e.key.key == SDLK_F8){
+                            break;
+                        }
+                        case SDLK_F8:
                             ed.home();
                             ed.root().rerender_children();
-                        }else if(!keydown(err,ed,e.key)){
-                            ed.keydown(e.key);
-                        }
+                            break;
+                        default:
+                            if(!keydown(toast,ed,e.key)){
+                                ed.keydown(e.key);
+                            }
+                            fn.ast().recursively_recalculate_result_type(tdb,proj.functions());
+                            break;
                     }
                     break;
             }
         }
         glClear(GL_COLOR_BUFFER_BIT);
-        ed.render_full(cppp::rtl<cppp::fvec2>({10.0f,10.0f+ed.graphics_context().line_height()*0.65f+ed.graphics_context().ascender()}));
-        if(err.alive()){
-            ed.graphics_context().draw_text(err.message(),cppp::rtl<cppp::fvec2>({10.0f,10.0f+ed.graphics_context().ascender()*0.6f}),0.6f,{1.0f,0.0f,0.0f});
+        ed.render_full(gc,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}));
+        if(toast.alive()){
+            gc.draw_text(toast.message(),cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.ascender()*0.6f}),0.6f,{1.0f,0.0f,0.0f});
+        }
+        if(auto van=dynamic_cast<const sfe::VisualASTNode*>(&ed.selected())){
+            gc.draw_text(strtype(van->node().result_type(),tdb),cppp::rtl<cppp::fvec2>({10.0f,static_cast<float>(gc.cmap().win_size().y())-8.0f+gc.descender()*0.35f}),0.35f,coltype(van->node().result_type(),tdb));
+        }
+        if(csp_open){
+            float winwidth_f = static_cast<float>(gc.cmap().win_size().x());
+            csp.render(gc,{winwidth_f/2.0f,10.0f},winwidth_f*0.6f,0.5f);
         }
         win.flip();
     }

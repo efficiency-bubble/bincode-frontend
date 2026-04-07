@@ -4,7 +4,6 @@ namespace sfe{
     using namespace std::literals;
     using namespace cppp::literals;
     constexpr static cppp::fvec3 RED{1.0f,0.0f,0.0f};
-    constexpr static cppp::fvec3 WHITE{1.0f};
     constexpr static cppp::fvec3 GRAY{0.7f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_1{0.5f,0.0f,0.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_2{0.8f,1.0f,1.0f};
@@ -107,10 +106,12 @@ namespace sfe{
                 cursor_pos = pos;
                 break;
             case PACK:
+                gc.draw_text(u8"("sv,pos,1.0f,WHITE);
                 for(std::uint32_t i=0;i<_children.size();++i){
                     if(i) gc.draw_text(u8","sv,pos,1.0f,WHITE);
                     _children[i].draw(gc,cursor,pos);
                 }
+                gc.draw_text(u8")"sv,pos,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
             case PACKIND:

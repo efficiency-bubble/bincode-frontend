@@ -45,14 +45,16 @@ namespace sfe{
                 cursor.trail().home();
                 break;
             case SDLK_BACKSPACE:
-                if(static_cast<VisualASTNode&>(selected()).type() == bbe::NodeType::NTYPE){
-                    if(!cursor.trail().has_nesting()){
-                        break; // can't delete root node
+                if(auto van=dynamic_cast<VisualASTNode*>(&selected())){
+                    if(van->type() == bbe::NodeType::NTYPE){
+                        if(!cursor.trail().has_nesting()){
+                            break; // can't delete root node
+                        }
+                        cursor.trail().leave();
                     }
-                    cursor.trail().leave();
+                    van->node() = {bbe::NodeType::NTYPE,0};
+                    selected().rerender_children();
                 }
-                static_cast<VisualASTNode&>(selected()).node() = {bbe::NodeType::NTYPE,0};
-                selected().rerender_children();
                 break;
         }
     }

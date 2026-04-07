@@ -1,7 +1,5 @@
 #pragma once
 #include<cppp/type-erasure.hpp>
-#include<sgl/ext/freetype.hpp>
-#include<sgl/draw/line.hpp>
 #include<bbe/function.hpp>
 #include<cppp/vector.hpp>
 #include<cppp/swap.hpp>
@@ -10,41 +8,9 @@
 #include<cstdint>
 #include<ranges>
 #include<vector>
+#include"graphics.hpp"
 #include"cursor.hpp"
 namespace sfe{
-    class GraphicsContext{
-        sgl::LineDrawer ld;
-        sgl::SDFTextRenderer tr;
-        sgl::CachedFont cf;
-        sgl::CoordinateMap cm;
-        float scale;
-        public:
-            GraphicsContext(sgl::CachedFont&& f,sgl::CoordinateMap cm,float scale) : cf(std::move(f)), cm(cm), scale(scale){}
-            void update_window(std::uint32_t w,std::uint32_t h){
-                cm.update(w,h);
-            }
-            void draw_text(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec3 color) const{
-                tr.draw_text(text,pos,scale*sca,color,cf,cm);
-            }
-            void line(cppp::fvec2 spos,cppp::fvec3 scolor,cppp::fvec2 tpos,cppp::fvec3 tcolor) const{
-                ld.line(cm.cvt_abs(spos),scolor,cm.cvt_abs(tpos),tcolor);
-            }
-            const sgl::CachedFont& font_cache() const{
-                return cf;
-            }
-            float ascender() const{
-                return scale*cf.font().ascender_px();
-            }
-            float descender() const{
-                return scale*cf.font().descender_px();
-            }
-            float indentation() const{
-                return scale*static_cast<float>(cf.query(cf.font().char_to_glyph_id(u8'0')).advance())/64.0f;
-            }
-            float line_height() const{
-                return scale*cf.font().line_height_px();
-            }
-    };
     using UICursor = Cursor<class VisualNode,class VisualFunctionNode>;
     class VisualNode{
         public:
@@ -137,6 +103,9 @@ namespace sfe{
             VisualFunctionNode(bbe::Function& f,std::uint32_t id) : fn(&f), _child(f.ast()), id(id){}
             void draw(const GraphicsContext& gc,const UICursor& cursor,cppp::fvec2& pos) const override;
             const bbe::Function& func() const{
+                return *fn;
+            }
+            bbe::Function& func(){
                 return *fn;
             }
             const VisualASTNode& child() const{

@@ -4,21 +4,17 @@
 namespace sfe{
     class Editor{
         UICursor cursor;
-        GraphicsContext gc;
         // Owns the root for perf reasons (no need to store an extra pointer)
         void navigate(bool right,bool fast);
         public:
-            Editor(VisualFunctionNode&& root,GraphicsContext&& gc) : cursor(std::move(root)), gc(std::move(gc)){}
-            void update_window(std::uint32_t w,std::uint32_t h){
-                gc.update_window(w,h);
-            }
+            Editor(VisualFunctionNode&& root) : cursor(std::move(root)){}
             const VisualFunctionNode& root() const{
                 return cursor.trail().root();
             }
             VisualFunctionNode& root(){
                 return cursor.trail().root();
             }
-            void render_full(cppp::fvec2& pos) const{
+            void render_full(const GraphicsContext& gc,cppp::fvec2& pos) const{
                 root().draw(gc,cursor,pos);
             }
             void leave(){
@@ -29,6 +25,7 @@ namespace sfe{
             }
             void home(){
                 cursor.trail().home();
+                set_select_after(false);
             }
             void enter(std::uint32_t c,bool from_right){
                 cursor.trail().enter(c);
@@ -47,8 +44,5 @@ namespace sfe{
                 return cursor.is_after();
             }
             void keydown(const SDL_KeyboardEvent&);
-            const GraphicsContext& graphics_context() const{
-                return gc;
-            }
     };
 }
