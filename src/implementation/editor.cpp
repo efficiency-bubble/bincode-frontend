@@ -51,6 +51,7 @@ namespace sfe{
                             break; // can't delete root node
                         }
                         cursor.trail().leave();
+                        cursor.set_after(false);
                     }
                     van->node() = {bbe::NodeType::NTYPE,0};
                     selected().rerender_children();
