@@ -25,5 +25,9 @@ setup:
 	mkdir lib
 	mkdir bin
 	mkdir obj
-.PHONY: setup all
+clean:
+	find obj -type f -delete
+	find bin -type f -delete
+	find lib -type f -delete
+.PHONY: setup all clean
 	

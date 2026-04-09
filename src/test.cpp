@@ -125,7 +125,7 @@ bool keydown(sfe::Toast& toast,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
             case NTYPE:
                 switch(ke.key){
                     case SDLK_A:
-                        sel->node() = {bbe::NodeType::ARGV};
+                        sel->node() = {bbe::NodeType::ARG};
                         sel->rerender_children();
                         ed.set_select_after(true);
                         break;
@@ -146,7 +146,7 @@ bool keydown(sfe::Toast& toast,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
                         break;
                     case SDLK_X:
                         sel->node() = {bbe::NodeType::PACKIND,0,1};
-                        sel->node().children().front() = {bbe::NodeType::ARGV};
+                        sel->node().children().front() = {bbe::NodeType::ARG};
                         sel->rerender_children();
                         ed.set_select_after(true);
                         break;
@@ -265,9 +265,10 @@ int main(){
     SDL_GL_SetSwapInterval(-1);
     
     bbe::ProjectEntitiesPool proj;
-    bbe::TypeDatabase tdb;
-    bbe::type_id b_uint32{tdb.T_UINT32};
-    bbe::Function& fn = proj.functions()[proj.functions().emplace(bbe::FunctionSignature{b_uint32,{b_uint32}})];
+    bbe::ErrorDatabase edb;
+    
+    bbe::type_id b_uint32{proj.types().T_UINT32};
+    bbe::Function& fn = proj.functions()[proj.functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32})];
     fn.ast() = {bbe::NodeType::NTYPE};
     sfe::GraphicsContext gc{code_font(),{1200,600},1.0f};
     sfe::Editor ed{{fn,0}};
@@ -287,7 +288,7 @@ int main(){
     sfe::CommandSelectorPanel csp{cmds,ed};
     bool csp_open = false;
     
-    fn.ast().recursively_recalculate_result_type(tdb,proj.functions());
+    fn.ast().recursively_recalculate_result_type(proj,edb,fn.signature());
     while(true){
         for(const auto& e : sgl::events()){
             switch(e.type){
@@ -368,7 +369,7 @@ int main(){
                                     bbe::formats::elf::Elf elf;
                                     bbe::targets::x86::Program prog;
                                     {
-                                        bbe::targets::x86::Function fn{ed.root().func(),tdb};
+                                        bbe::targets::x86::Function fn{ed.root().func(),proj.types()};
                                         cppp::format_to<u8"{} bytes; "_ts>(rbuf,fn.instructions().size());
                                         prog.export_function(u8"example"s,std::move(fn));
                                     }
@@ -413,19 +414,26 @@ int main(){
                             if(!keydown(toast,ed,e.key)){
                                 ed.keydown(e.key);
                             }
-                            fn.ast().recursively_recalculate_result_type(tdb,proj.functions());
+                            edb.clear();
+                            fn.ast().recursively_recalculate_result_type(proj,edb,fn.signature());
                             break;
                     }
                     break;
             }
         }
         glClear(GL_COLOR_BUFFER_BIT);
-        ed.render_full(gc,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}));
+        ed.render_full(gc,edb,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}));
         if(toast.alive()){
-            gc.draw_text(toast.message(),cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.ascender()*0.6f}),0.6f,{1.0f,0.0f,0.0f});
+            gc.draw_text(toast.message(),{10.0f,10.0f+gc.ascender()*0.6f},0.6f,{1.0f,0.0f,0.0f});
         }
         if(auto van=dynamic_cast<const sfe::VisualASTNode*>(&ed.selected())){
-            gc.draw_text(strtype(van->node().result_type(),tdb),cppp::rtl<cppp::fvec2>({10.0f,static_cast<float>(gc.cmap().win_size().y())-8.0f+gc.descender()*0.35f}),0.35f,coltype(van->node().result_type(),tdb));
+            constexpr static float DIAG_TEXT_SCALE = 0.4f;
+            float winheight_f = static_cast<float>(gc.cmap().win_size().y());
+            float y = winheight_f * 0.75f + gc.ascender()*DIAG_TEXT_SCALE;
+            for(const auto& em : edb.query(&van->node())){
+                gc.draw_text(em.reason(),{10.0f,y},DIAG_TEXT_SCALE,{1.0f,0.0f,0.0f});
+            }
+            gc.draw_text(strtype(van->node().result_type(),proj.types()),{10.0f,winheight_f-8.0f+gc.descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(van->node().result_type(),proj.types()));
         }
         if(csp_open){
             float winwidth_f = static_cast<float>(gc.cmap().win_size().x());

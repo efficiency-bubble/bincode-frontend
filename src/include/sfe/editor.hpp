@@ -1,5 +1,6 @@
 #pragma once
 #include<SDL3/SDL_events.h>
+#include<bbe/error.hpp>
 #include"uitree.hpp"
 namespace sfe{
     class Editor{
@@ -14,8 +15,8 @@ namespace sfe{
             VisualFunctionNode& root(){
                 return cursor.trail().root();
             }
-            void render_full(const GraphicsContext& gc,cppp::fvec2& pos) const{
-                root().draw(gc,cursor,pos);
+            void render_full(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,cppp::fvec2& pos) const{
+                root().draw(gc,errors,cursor,pos);
             }
             void leave(){
                 cursor.trail().leave();

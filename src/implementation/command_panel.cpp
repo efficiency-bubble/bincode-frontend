@@ -1,5 +1,4 @@
 #include<sfe/command_panel.hpp>
-#include<cppp/rtl.hpp>
 namespace sfe{
     void CommandSelectorPanel::render(const GraphicsContext& gc,cppp::fvec2 pos,float width,float text_scale){
         const float padding = 2.0f * text_scale;
@@ -9,12 +8,12 @@ namespace sfe{
         
         pos.x() -= width/2.0f;
         gc.rect(pos,cppp::fvec2{width,row_height},DIM_ORANGE);
-        gc.draw_text(_buffer,cppp::rtl<cppp::fvec2>(pos+cppp::fvec2(0,ascender)),text_scale,WHITE);
+        gc.draw_text(_buffer,pos+cppp::fvec2(0,ascender),text_scale,WHITE);
         
         for(std::size_t i=0uz;i<candidates.size();++i){
             pos.y() += line_height;
             gc.rect(pos,cppp::fvec2{width,row_height},i==selection?WHITE:DIM_ORANGE);
-            gc.draw_text(candidates[i]->first,cppp::rtl<cppp::fvec2>(pos+cppp::fvec2(0,ascender)),text_scale,i==selection?BLACK:WHITE);
+            gc.draw_text(candidates[i]->first,pos+cppp::fvec2(0,ascender),text_scale,i==selection?BLACK:WHITE);
         }
     }
 }

@@ -16,8 +16,11 @@ namespace sfe{
             void update_window(std::uint32_t w,std::uint32_t h){
                 cm.update(w,h);
             }
-            void draw_text(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec3 color) const{
+            void draw_text_at_cursor(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec3 color) const{
                 tr.draw_text(text,pos,scale*sca,color,cf,cm);
+            }
+            void draw_text(cppp::sv text,cppp::fvec2 pos,float sca,cppp::fvec3 color) const{
+                draw_text_at_cursor(text,pos,sca,color);
             }
             void line(cppp::fvec2 spos,cppp::fvec3 scolor,cppp::fvec2 tpos,cppp::fvec3 tcolor) const{
                 ld.line(cm.cvt_abs(spos),scolor,cm.cvt_abs(tpos),tcolor);
