@@ -3,9 +3,9 @@
 #include<bbe/error.hpp>
 #include"uitree.hpp"
 namespace sfe{
+    // Owns the root for perf reasons (no need to store an extra pointer)
     class Editor{
         UICursor cursor;
-        // Owns the root for perf reasons (no need to store an extra pointer)
         void navigate(bool right,bool fast);
         public:
             Editor(VisualFunctionNode&& root) : cursor(std::move(root)){}
