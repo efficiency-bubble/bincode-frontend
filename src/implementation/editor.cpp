@@ -1,7 +1,7 @@
 #include<sfe/editor.hpp>
 #include<cppp/tostring.hpp>
 namespace sfe{
-    void Editor::navigate(bool right,bool fast){
+    void CodeEntry::navigate(bool right,bool fast){
         bool nochildren = cursor.trail().top().children().empty();
         if(nochildren && (cursor.trail().top().fast() || fast)){
             cursor.set_after(right);
@@ -30,8 +30,8 @@ namespace sfe{
             cursor.set_after(right);
         }
     }
-    void Editor::keydown(const SDL_KeyboardEvent& key){
-        switch(key.key){
+    void CodeEntry::keydown(Keypress kp){
+        switch(kp.key()){
             case SDLK_LEFT:
                 navigate(false,true);
                 break;
@@ -39,7 +39,7 @@ namespace sfe{
                 navigate(true,true);
                 break;
             case SDLK_TAB:
-                navigate(!(key.mod&SDL_KMOD_SHIFT),false);
+                navigate(!(kp.mods()&KeyModifiers::SHIFT),false);
                 break;
             case SDLK_ESCAPE:
                 cursor.trail().home();

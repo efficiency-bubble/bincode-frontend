@@ -1,20 +1,10 @@
 #include<sfe/sfe.hpp>
+#include<sfe/builtin-commands.hpp>
+#include<cppp/tostring.hpp>
+#include<cppp/swap.hpp>
+#include<cppp/int.hpp>
 #include<sgl/sgl.hpp>
 #include<bbe/bbe.hpp>
-#include<bbe/targets/yasbepl.hpp>
-#include<cppp/static-functor.hpp>
-#include<bbe/formats/elf.hpp>
-#include<bbe/targets/x86.hpp>
-#include<bbe/inter/dfg.hpp>
-#include<bbe/inter/rtl.hpp>
-#include<cppp/tostring.hpp>
-#include<cppp/bfile.hpp>
-#include<cppp/swap.hpp>
-#include<cppp/rtl.hpp>
-#include<cppp/int.hpp>
-#include<stdio.h>
-#include<chrono>
-#include<print>
 using namespace std::literals;
 using namespace cppp::literals;
 sgl::FreeType ftlib;
@@ -33,12 +23,12 @@ void steal_lhs(sfe::VisualASTNode& ui,bbe::ASTNode&& node){
     old_ui.rerender_children();
     ui.populate(std::move(old_ui));
 }
-void builtin_unary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::Editor& ed){
+void builtin_unary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::CodeEntry& ed){
     steal_lhs(sel,{bbe::NodeType::CALL_BUILTIN,prim,1});
     ed.subst_sel(sel);
     ed.set_select_after(true);
 }
-void builtin_binary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::Editor& ed){
+void builtin_binary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::CodeEntry& ed){
     bool second = sel.type() != bbe::NodeType::NTYPE;
     steal_lhs(sel,{bbe::NodeType::CALL_BUILTIN,prim,2});
     sel.node().children()[1uz] = {bbe::NodeType::NTYPE};
@@ -46,7 +36,7 @@ void builtin_binary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::Editor& ed){
     ed.subst_sel(sel);
     ed.enter(second,false);
 }
-bool keydown(sfe::Toast& toast,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
+bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const SDL_KeyboardEvent& ke){
     bool shift = (ke.mod & SDL_KMOD_SHIFT);
     if(auto sel=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
         switch(ke.key){
@@ -111,7 +101,7 @@ bool keydown(sfe::Toast& toast,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
                                 break;
                             case SDLK_0: case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
                             case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9:
-                                if((static_cast<std::uint64_t>(sel->p32())*10+static_cast<std::uint64_t>(ke.key-SDLK_0))>static_cast<std::uint64_t>(std::numeric_limits<std::uint32_t>::max())){
+                                if((static_cast<std::uint64_t>(sel->p32())*10+static_cast<std::uint64_t>(ke.key-SDLK_0))>std::numeric_limits<std::uint32_t>::max()){
                                     using namespace std::chrono_literals;
                                     toast.reset(u8"Overflow!"s,810ms);
                                 }else{
@@ -163,36 +153,6 @@ bool keydown(sfe::Toast& toast,sfe::Editor& ed,const SDL_KeyboardEvent& ke){
         }
     }
     return false;
-}
-using hrc = std::chrono::high_resolution_clock;
-using µs = std::chrono::duration<std::uint64_t,std::micro>;
-template<typename F>
-µs time_execution(const F& f){
-    auto begin = hrc::now();
-    f();
-    auto dur = hrc::now()-begin;
-    return std::chrono::duration_cast<µs>(dur);
-}
-sfe::Toast toast;
-void save(sfe::Editor& ed){
-    cppp::bytes save;
-    static_cast<const sfe::VisualFunctionNode&>(ed.root()).func().ast().serialize(save);
-    cppp::BinaryFile bf{u8"testprog"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
-    bf.write(save);
-    toast.reset(cppp::format<u8"Saved {} bytes"_ts>(save.size()),1s);
-}
-void load(sfe::Editor& ed){
-    cppp::BinaryFile bf{u8"testprog"s,std::ios_base::in|std::ios_base::binary};
-    cppp::bytes save;
-    std::array<std::byte,1024uz> buf;
-    std::size_t nread;
-    do{
-        nread = bf.read(buf);
-        save.append(std::span{buf.data(),nread});
-    }while(nread);
-    static_cast<sfe::VisualFunctionNode&>(ed.root()).func().ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
-    ed.root().rerender_children();
-    ed.home();
 }
 cppp::str strtype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
     if(tid == tdb.T_ERROR){
@@ -251,10 +211,18 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
     }
 }
 int main(){
+    bbe::ProjectEntitiesPool proj;
+    bbe::ErrorDatabase edb;
+    
+    bbe::type_id b_uint32{proj.types().T_UINT32};
+    bbe::Function& fn = proj.functions()[proj.functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32})];
+    fn.ast() = {bbe::NodeType::NTYPE};
+    
+    SDL_SetHint(SDL_HINT_INVALID_PARAM_CHECKS,"1");
     SDL_SetAppMetadata("edBCC (SGL)",nullptr,"edbcc.cpp");
     SDL_InitSubSystem(SDL_INIT_VIDEO);
 
-    sgl::Window win{u8"edBCC (SGL)"s,1200,600};
+    sfe::Window ed{proj,{u8"edBCC (SGL)"s,1200,600},{fn,0},{code_font(),{1200,600},1.0f}};
     { // scope for all GL objects. Their dtors must run before we destroy everything with SDL_Quit().
     // gldbg();
     glClearColor(0.0f,0.0f,0.0f,1.0f);
@@ -262,32 +230,16 @@ int main(){
     glLineWidth(3.0f);
     sgl::init_gl_for_text();
     
-    SDL_GL_SetSwapInterval(-1);
+    if(!SDL_GL_SetSwapInterval(-1)){SDL_GL_SetSwapInterval(1);}
     
-    bbe::ProjectEntitiesPool proj;
-    bbe::ErrorDatabase edb;
-    
-    bbe::type_id b_uint32{proj.types().T_UINT32};
-    bbe::Function& fn = proj.functions()[proj.functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32})];
-    fn.ast() = {bbe::NodeType::NTYPE};
-    sfe::GraphicsContext gc{code_font(),{1200,600},1.0f};
-    sfe::Editor ed{{fn,0}};
-    
-    sfe::CommandSet cmds;
-    constexpr bool(*TRUE_FN)(sfe::Editor&) = [](sfe::Editor&)static{return true;};
-    cmds.add(u8"exit"s,{TRUE_FN,[](sfe::Editor&)static{
-        SDL_Event ev{.quit={
-            .type=SDL_EVENT_QUIT,
-            .reserved=0,
-            .timestamp=SDL_GetTicksNS()
-        }};
-        SDL_PushEvent(&ev);
-    }});
-    cmds.add(u8"save"s,{TRUE_FN,save});
-    cmds.add(u8"load"s,{TRUE_FN,load});
-    sfe::CommandSelectorPanel csp{cmds,ed};
-    bool csp_open = false;
-    
+    ed.add_command(u8"open command palette"s,SDLK_F1,sfe::commands::open_command_palette);
+    ed.add_command(u8"save"s,{sfe::KeyModifiers::CTRL,SDLK_S},sfe::commands::save);
+    ed.add_command(u8"load"s,{sfe::KeyModifiers::CTRL,SDLK_O},sfe::commands::load);
+    ed.add_command(u8"reset cursor"s,SDLK_F8,sfe::commands::reset_cursor);
+    ed.add_command(u8"exit"s,sfe::commands::quit);
+    ed.add_command(u8"debug selection"s,SDLK_F7,sfe::commands::debug_selection);
+    ed.add_command(u8"compile code for x86"s,SDLK_F6,sfe::commands::compile_and_run);
+    ed.add_command(u8"interpret code"s,SDLK_F5,sfe::commands::interpret);
     fn.ast().recursively_recalculate_result_type(proj,edb,fn.signature());
     while(true){
         for(const auto& e : sgl::events()){
@@ -295,151 +247,37 @@ int main(){
                 case SDL_EVENT_QUIT: goto cleanup;
                 case SDL_EVENT_WINDOW_RESIZED:
                     glViewport(0,0,e.window.data1,e.window.data2);
-                    gc.update_window(static_cast<std::uint32_t>(e.window.data1),static_cast<std::uint32_t>(e.window.data2));
+                    ed.graphics_context().update_window(static_cast<std::uint32_t>(e.window.data1),static_cast<std::uint32_t>(e.window.data2));
                     break;
                 case SDL_EVENT_TEXT_INPUT:
-                    csp.append(e.text.text);
+                    CPPP_ASSERT(ed.is_command_palette_open());
+                    ed.command_palette().append(e.text.text);
                     break;
                 case SDL_EVENT_KEY_DOWN:
-                    if(e.key.mod & SDL_KMOD_CTRL) switch(e.key.key){
-                        case SDLK_S:
-                            save(ed);
-                            break;
-                        case SDLK_O:
-                            load(ed);
-                            break;
-                    }else if(csp_open) switch(e.key.key){
-                        case SDLK_RETURN:
-                            csp.exec();
-                            [[fallthrough]];
-                        case SDLK_ESCAPE:
-                            csp_open = false;
-                            csp.clear();
-                            win.stop_input();
-                            break;
-                        case SDLK_BACKSPACE:
-                            csp.backspace();
-                            break;
-                        case SDLK_DOWN:
-                            csp.next();
-                            break;
-                        case SDLK_UP:
-                            csp.prev();
-                            break;
-                    }else switch(e.key.key){
-                        case SDLK_F1:
-                            csp_open = true;
-                            win.start_input();
-                            break;
-                        case SDLK_F5:
-                            try{
-                                cppp::str rbuf;
-                                {
-                                    bbe::inter::dfg::CompiledFunctionPool compiled{proj};
-                                    µs delta = time_execution([&]{
-                                        bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{30}}),rbuf);
-                                    });
-                                    std::span<int> a;
-                                    if(delta.count() < 1000){
-                                        cppp::format_to<u8" in {} µs (dfg inter); "_ts>(rbuf,delta.count());
-                                    }else{
-                                        cppp::format_to<u8" in {:.2f} ms (dfg inter); "_ts>(rbuf,static_cast<float>(delta.count())/1000.0f);
-                                    }
-                                }
-                                {
-                                    bbe::inter::rtl::CompiledFunctionPool compiled{proj};
-                                    µs delta = time_execution([&]{
-                                        bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{30}}),rbuf);
-                                    });
-                                    if(delta.count() < 1000){
-                                        cppp::format_to<u8" in {} µs (rtl inter)"_ts>(rbuf,delta.count());
-                                    }else{
-                                        cppp::format_to<u8" in {:.2f} ms (rtl inter)"_ts>(rbuf,static_cast<float>(delta.count())/1000.0f);
-                                    }
-                                }
-                                toast.reset(std::move(rbuf),3s);
-                            }catch(const std::exception& e){
-                                toast.reset(cppp::tou8(std::string_view(e.what())),3s);
-                            }
-                            break;
-                        case SDLK_F6:
-                            try{
-                                cppp::str rbuf;
-                                {
-                                    bbe::formats::elf::Elf elf;
-                                    bbe::targets::x86::Program prog;
-                                    {
-                                        bbe::targets::x86::Function fn{ed.root().func(),proj.types()};
-                                        cppp::format_to<u8"{} bytes; "_ts>(rbuf,fn.instructions().size());
-                                        prog.export_function(u8"example"s,std::move(fn));
-                                    }
-                                    elf.add_text(prog);
-                                    cppp::BinaryFile outf{u8"testprog_c.o"s,std::ios_base::out|std::ios_base::binary|std::ios_base::trunc};
-                                    
-                                    outf.write(elf.encode());
-                                }
-                                if(int ret=std::system("g++ -O3 -std=c++26 -s timing_helper.cpp testprog_c.o -o testprog_c")){
-                                    throw std::runtime_error(std::format("GCC failed with: {}"sv,ret));
-                                }
-                                if(std::unique_ptr<std::FILE,cppp::static_functor<pclose>> dl{popen(
-                                    reinterpret_cast<const char*>(cppp::format<u8"./testprog_c {}"_ts>(30).c_str())
-                                    ,"r")}){
-                                    std::array<char8_t,1024uz> buf;
-                                    while(std::size_t nr = std::fread(buf.data(),1,buf.size(),dl.get())){
-                                        rbuf.append(buf.data(),nr);
-                                    }
-                                    if(std::ferror(dl.get())) rbuf.append(u8"<READ ERROR>"s);
-                                    rbuf.append(u8" (x86_64)"s);
-                                }else{
-                                    throw std::runtime_error("can't start testprog"s);
-                                }
-                                toast.reset(std::move(rbuf),3s);
-                            }catch(const std::exception& e){
-                                toast.reset(cppp::tou8(std::string_view(e.what())),3s);
-                            }
-                            break;
-                        case SDLK_F7: {
-                            cppp::str rbuf;
-                            if(auto* vn=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
-                                cppp::format_to<u8"{:p} = {}"_ts>(rbuf,static_cast<void*>(vn),std::to_underlying(vn->type()));
-                            }
-                            std::println("{}"sv,cppp::cview(rbuf));
-                            break;
-                        }
-                        case SDLK_F8:
-                            ed.home();
-                            ed.root().rerender_children();
-                            break;
-                        default:
-                            if(!keydown(toast,ed,e.key)){
-                                ed.keydown(e.key);
-                            }
-                            edb.clear();
-                            fn.ast().recursively_recalculate_result_type(proj,edb,fn.signature());
-                            break;
+                    if(ed.is_command_palette_open() || !keydown(ed.toast(),ed.code(),e.key)){
+                        ed.keydown(e.key);
                     }
+                    edb.clear();
+                    fn.ast().recursively_recalculate_result_type(proj,edb,fn.signature());
                     break;
             }
         }
         glClear(GL_COLOR_BUFFER_BIT);
-        ed.render_full(gc,edb,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}));
-        if(toast.alive()){
-            gc.draw_text(toast.message(),{10.0f,10.0f+gc.ascender()*0.6f},0.6f,{1.0f,0.0f,0.0f});
+        ed.render(edb);
+        if(ed.toast().alive()){
+            ed.graphics_context().draw_text(ed.toast().message(),{10.0f,10.0f+ed.graphics_context().ascender()*0.6f},0.6f,{1.0f,0.0f,0.0f});
         }
-        if(auto van=dynamic_cast<const sfe::VisualASTNode*>(&ed.selected())){
+        if(auto van=dynamic_cast<const sfe::VisualASTNode*>(&ed.code().selected())){
             constexpr static float DIAG_TEXT_SCALE = 0.4f;
-            float winheight_f = static_cast<float>(gc.cmap().win_size().y());
-            float y = winheight_f * 0.75f + gc.ascender()*DIAG_TEXT_SCALE;
+            float winheight_f = static_cast<float>(ed.graphics_context().cmap().win_size().y());
+            float y = winheight_f * 0.75f + ed.graphics_context().ascender()*DIAG_TEXT_SCALE;
             for(const auto& em : edb.query(&van->node())){
-                gc.draw_text(em.reason(),{10.0f,y},DIAG_TEXT_SCALE,{1.0f,0.0f,0.0f});
+                ed.graphics_context().draw_text(em.reason(),{10.0f,y},DIAG_TEXT_SCALE,{1.0f,0.0f,0.0f});
             }
-            gc.draw_text(strtype(van->node().result_type(),proj.types()),{10.0f,winheight_f-8.0f+gc.descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(van->node().result_type(),proj.types()));
+            ed.graphics_context().draw_text(strtype(van->node().result_type(),proj.types()),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(van->node().result_type(),proj.types()));
         }
-        if(csp_open){
-            float winwidth_f = static_cast<float>(gc.cmap().win_size().x());
-            csp.render(gc,{winwidth_f/2.0f,10.0f},winwidth_f*0.6f,0.5f);
-        }
-        win.flip();
+        ed.render_overlay();
+        ed.system_window().flip();
     }
     }
     cleanup:
