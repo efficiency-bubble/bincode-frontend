@@ -161,7 +161,7 @@ cppp::str strtype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
     cppp::str tag;
     const bbe::TypeInfo& t = tdb[tid];
     switch(t.type()){
-        using enum bbe::FundamentalTypeType;
+        using enum bbe::TypeCategory;
         case VOID:
             return u8"void"s;
         case UNSIGNED_INTEGRAL:
@@ -171,7 +171,7 @@ cppp::str strtype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
                 tag = cppp::format<u8"uint{}_t"_ts>(t.size()*8);
             }
             break;
-        case FUNCTION: {
+        case FUNCTION_POINTER: {
             const bbe::FunctionSignature& sig = t.function_signature();
             tag = cppp::format<u8"{} => {}"_ts>(strtype(sig.parameter(),tdb),strtype(sig.return_type(),tdb));
             break;
@@ -204,7 +204,7 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
         case bbe::TypeDatabase::T_ERROR:
             return {1.0f,0.0f,0.0f};
         default:
-            if(tdb[tid].type() == bbe::FundamentalTypeType::FUNCTION){
+            if(tdb[tid].type() == bbe::TypeCategory::FUNCTION_POINTER){
                 return {0.6274509803921569f,0.9568627450980393f,0.2235294117647059f};
             }
             return {0.8588235294117647f, 0.23137254901960785f, 0.9215686274509803f};

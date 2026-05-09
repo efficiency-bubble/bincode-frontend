@@ -1,5 +1,6 @@
 #pragma once
 #include"commands.hpp"
+#include<numeric>
 namespace sfe{
     class CommandPalette{
         const CommandSet* commands;
@@ -40,7 +41,7 @@ namespace sfe{
                 if(selection){
                     --selection;
                 }else{
-                    selection = std::sub_sat(candidates.size(),1uz);
+                    selection = std::saturating_sub(candidates.size(),1uz);
                 }
             }
             void render(const GraphicsContext& gc,cppp::fvec2 pos,float width,float text_scale) const;

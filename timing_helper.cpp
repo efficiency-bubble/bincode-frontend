@@ -20,7 +20,7 @@ int main(int argc,char* argv[]){
     if(delta.count() < 1000){
         std::print("{} µs"sv,delta.count());
     }else{
-        std::print("{:.2f} µs"sv,static_cast<float>(delta.count())/1000.0f);
+        std::print("{:.2f} ms"sv,static_cast<float>(delta.count())/1000.0f);
     }
     return 0;
 }
