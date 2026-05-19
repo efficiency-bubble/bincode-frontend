@@ -9,6 +9,7 @@
 #include"toast.hpp"
 #include"command-palette.hpp"
 #include"keys.hpp"
+#include"project.hpp"
 namespace sfe{
     // Owns the root for perf reasons (no need to store an extra pointer)
     class CodeEntry{
@@ -22,8 +23,8 @@ namespace sfe{
             VisualFunctionNode& root(){
                 return cursor.trail().root();
             }
-            void render_full(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,cppp::fvec2& pos) const{
-                root().draw(gc,errors,cursor,pos);
+            void render_full(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,cppp::fvec2& pos) const{
+                root().draw(gc,errors,names,cursor,pos);
             }
             void leave(){
                 cursor.trail().leave();
@@ -54,7 +55,7 @@ namespace sfe{
             void keydown(Keypress);
     };
     class Window{
-        bbe::ProjectEntitiesPool* pr;
+        Project* pr;
         sgl::Window w;
         CodeEntry ce;
         GraphicsContext gc;
@@ -63,11 +64,11 @@ namespace sfe{
         std::optional<CommandPalette> cp;
         Toast _toast;
         public:
-            Window(bbe::ProjectEntitiesPool& proj,sgl::Window&& w,VisualFunctionNode&& root,GraphicsContext&& gc) : pr(&proj), w(std::move(w)), ce(std::move(root)), gc(std::move(gc)){}
-            const bbe::ProjectEntitiesPool& project() const{
+            Window(Project& proj,sgl::Window&& w,VisualFunctionNode&& root,GraphicsContext&& gc) : pr(&proj), w(std::move(w)), ce(std::move(root)), gc(std::move(gc)){}
+            const Project& project() const{
                 return *pr;
             }
-            bbe::ProjectEntitiesPool& project(){
+            Project& project(){
                 return *pr;
             }
             const Toast& toast() const{
@@ -150,8 +151,8 @@ namespace sfe{
                     ce.keydown(kp);
                 }
             }
-            void render(bbe::ErrorDatabase& edb) const{
-                ce.render_full(gc,edb,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}));
+            void render(const bbe::ErrorDatabase& edb,const sfe::NameDatabase& ndb) const{
+                ce.render_full(gc,edb,ndb,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}));
             }
             void render_overlay() const{
                 if(cp.has_value()){

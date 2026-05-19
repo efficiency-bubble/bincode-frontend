@@ -6,7 +6,7 @@
 #include<bbe/targets/dfg.hpp>
 #include<bbe/inter/rtl.hpp>
 #include<bbe/inter/dfg.hpp>
-#include<cppp/tostring.hpp>
+#include<cppp/format.hpp>
 #include<SDL3/SDL_events.h>
 #include<cppp/bfile.hpp>
 #include<cppp/print.hpp>
@@ -72,7 +72,7 @@ namespace sfe::commands{
         try{
             cppp::str rbuf;
             {
-                bbe::inter::dfg::CompiledFunctionPool compiled{ed.project()};
+                bbe::inter::dfg::CompiledFunctionPool compiled{ed.project().entities()};
                 µs delta = time_execution([&]{
                     bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{30}}),rbuf);
                 });
@@ -84,7 +84,7 @@ namespace sfe::commands{
                 }
             }
             {
-                bbe::inter::rtl::CompiledFunctionPool compiled{ed.project()};
+                bbe::inter::rtl::CompiledFunctionPool compiled{ed.project().entities()};
                 µs delta = time_execution([&]{
                     bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{30}}),rbuf);
                 });
@@ -106,7 +106,7 @@ namespace sfe::commands{
                 bbe::formats::elf::Elf elf;
                 bbe::targets::x86::Program prog;
                 {
-                    bbe::targets::x86::Function fn{ed.code().root().func(),ed.project().types()};
+                    bbe::targets::x86::Function fn{ed.code().root().func(),ed.project().entities().types()};
                     cppp::format_to<u8"{} bytes; "_ts>(rbuf,fn.instructions().size());
                     prog.export_function(u8"example"s,std::move(fn));
                 }
@@ -115,7 +115,7 @@ namespace sfe::commands{
                 
                 outf.write(elf.encode());
             }
-            if(int ret=std::system("g++ -O3 -std=c++26 -s timing_helper.cpp testprog_c.o -o testprog_c")){
+            if(int ret=std::system("g++ -O3 -m64 -s timing_helper.o testprog_c.o -o testprog_c")){
                 throw std::runtime_error(std::format("GCC failed with: {}"sv,ret));
             }
             if(std::unique_ptr<std::FILE,cppp::static_functor<pclose>> dl{popen(

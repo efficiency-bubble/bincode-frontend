@@ -1,5 +1,5 @@
 #include<sfe/editor.hpp>
-#include<cppp/tostring.hpp>
+#include<cppp/format.hpp>
 namespace sfe{
     void CodeEntry::navigate(bool right,bool fast){
         bool nochildren = cursor.trail().top().children().empty();

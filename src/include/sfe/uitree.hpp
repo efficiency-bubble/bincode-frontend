@@ -10,6 +10,7 @@
 #include<vector>
 #include"graphics.hpp"
 #include"cursor.hpp"
+#include"style.hpp"
 namespace sfe{
     using UICursor = Cursor<class VisualNode,class VisualFunctionNode>;
     class VisualNode{
@@ -18,7 +19,7 @@ namespace sfe{
             cppp::erased_span<Self> children(this Self& v){
                 return static_cast<cppp::copy_const_t<Self,VisualNode>&>(v).do_children().template downcast<Self>();
             }
-            virtual void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const UICursor& cursor,cppp::fvec2& pos) const = 0;
+            virtual void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const = 0;
             virtual bool fast() const = 0;
             virtual void rerender_children() = 0;
         protected:
@@ -42,7 +43,7 @@ namespace sfe{
             VisualASTNode(bbe::ASTNode& nd) : nd(&nd){
                 populate();
             }
-            void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const UICursor& cursor,cppp::fvec2& pos) const override;
+            void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const override;
             void repoint(bbe::ASTNode& other){
                 nd = &other;
             }
@@ -101,7 +102,7 @@ namespace sfe{
         std::uint32_t id;
         public:
             VisualFunctionNode(bbe::Function& f,std::uint32_t id) : fn(&f), _child(f.ast()), id(id){}
-            void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const UICursor& cursor,cppp::fvec2& pos) const override;
+            void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const override;
             const bbe::Function& func() const{
                 return *fn;
             }

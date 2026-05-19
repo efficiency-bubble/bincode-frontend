@@ -1,6 +1,9 @@
-#include<sfe/sfe.hpp>
+#include<sfe/cursor.hpp>
+#include<sfe/toast.hpp>
+#include<sfe/editor.hpp>
+#include<sfe/style.hpp>
 #include<sfe/builtin-commands.hpp>
-#include<cppp/tostring.hpp>
+#include<cppp/format.hpp>
 #include<cppp/swap.hpp>
 #include<cppp/int.hpp>
 #include<sgl/sgl.hpp>
@@ -44,7 +47,7 @@ bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const SDL_KeyboardEvent& ke){
                 builtin_binary(*sel,shift?10_u32:50_u32,ed);
                 return true;
             case SDLK_MINUS: if(!shift){
-                builtin_binary(*sel,11,ed);
+                builtin_binary(*sel,20,ed);
                 return true;
             }else break;
             case SDLK_COMMA: if(shift){
@@ -164,12 +167,15 @@ cppp::str strtype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
         using enum bbe::TypeCategory;
         case VOID:
             return u8"void"s;
-        case UNSIGNED_INTEGRAL:
+        case SIGNED_INTEGRAL:
             if(t.size() == 1){
                 tag = u8"bool"s; // TODO: special case bool better
             }else{
-                tag = cppp::format<u8"uint{}_t"_ts>(t.size()*8);
+                tag = cppp::format<u8"int{}_t"_ts>(t.size()*8);
             }
+            break;
+        case UNSIGNED_INTEGRAL:
+            tag = cppp::format<u8"uint{}_t"_ts>(t.size()*8);
             break;
         case FUNCTION_POINTER: {
             const bbe::FunctionSignature& sig = t.function_signature();
@@ -211,12 +217,18 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
     }
 }
 int main(){
-    bbe::ProjectEntitiesPool proj;
+    if(int ret=std::system("g++ -O3 -m64 -std=c++26 -s -c timing_helper.cpp -o timing_helper.o")){
+        throw std::runtime_error(std::format("precompiling timing_helper failed with: {}"sv,ret));
+    }
+    sfe::Project proj;
     bbe::ErrorDatabase edb;
     
-    bbe::type_id b_uint32{proj.types().T_UINT32};
-    bbe::Function& fn = proj.functions()[proj.functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32})];
+    bbe::type_id b_uint32{proj.entities().types().T_UINT32};
+    auto fid = proj.entities().functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32});
+    proj.names().name_function(fid,u8"testfn"s);
+    bbe::Function& fn = proj.entities().functions()[fid];
     fn.ast() = {bbe::NodeType::NTYPE};
+    
     
     SDL_SetHint(SDL_HINT_INVALID_PARAM_CHECKS,"1");
     SDL_SetAppMetadata("edBCC (SGL)",nullptr,"edbcc.cpp");
@@ -224,13 +236,12 @@ int main(){
 
     sfe::Window ed{proj,{u8"edBCC (SGL)"s,1200,600},{fn,0},{code_font(),{1200,600},1.0f}};
     { // scope for all GL objects. Their dtors must run before we destroy everything with SDL_Quit().
-    // gldbg();
     glClearColor(0.0f,0.0f,0.0f,1.0f);
     glEnable(GL_CULL_FACE);
     glLineWidth(3.0f);
     sgl::init_gl_for_text();
     
-    if(!SDL_GL_SetSwapInterval(-1)){SDL_GL_SetSwapInterval(1);}
+    if(!SDL_GL_SetSwapInterval(-1)) SDL_GL_SetSwapInterval(1);
     
     ed.add_command(u8"open command palette"s,SDLK_F1,sfe::commands::open_command_palette);
     ed.add_command(u8"save"s,{sfe::KeyModifiers::CTRL,SDLK_S},sfe::commands::save);
@@ -240,7 +251,7 @@ int main(){
     ed.add_command(u8"debug selection"s,SDLK_F7,sfe::commands::debug_selection);
     ed.add_command(u8"compile code for x86"s,SDLK_F6,sfe::commands::compile_and_run);
     ed.add_command(u8"interpret code"s,SDLK_F5,sfe::commands::interpret);
-    fn.ast().recursively_recalculate_result_type(proj,edb,fn.signature());
+    fn.ast().recursively_recalculate_result_type(proj.entities(),edb,fn.signature());
     while(true){
         for(const auto& e : sgl::events()){
             switch(e.type){
@@ -258,12 +269,12 @@ int main(){
                         ed.keydown(e.key);
                     }
                     edb.clear();
-                    fn.ast().recursively_recalculate_result_type(proj,edb,fn.signature());
+                    fn.ast().recursively_recalculate_result_type(proj.entities(),edb,fn.signature());
                     break;
             }
         }
         glClear(GL_COLOR_BUFFER_BIT);
-        ed.render(edb);
+        ed.render(edb,proj.names());
         if(ed.toast().alive()){
             ed.graphics_context().draw_text(ed.toast().message(),{10.0f,10.0f+ed.graphics_context().ascender()*0.6f},0.6f,{1.0f,0.0f,0.0f});
         }
@@ -274,7 +285,7 @@ int main(){
             for(const auto& em : edb.query(&van->node())){
                 ed.graphics_context().draw_text(em.reason(),{10.0f,y},DIAG_TEXT_SCALE,{1.0f,0.0f,0.0f});
             }
-            ed.graphics_context().draw_text(strtype(van->node().result_type(),proj.types()),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(van->node().result_type(),proj.types()));
+            ed.graphics_context().draw_text(strtype(van->node().result_type(),proj.entities().types()),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(van->node().result_type(),proj.entities().types()));
         }
         ed.render_overlay();
         ed.system_window().flip();
