@@ -1,6 +1,7 @@
 #pragma once
 #include"commands.hpp"
 #include<SDL3/SDL_keycode.h>
+#include<SDL3/SDL_events.h>
 #include<cppp/string.hpp> // stringifying keybinds
 #include<utility>
 namespace sfe{
@@ -61,16 +62,19 @@ namespace sfe{
                 return _key == other._key && _mods == other._mods;
             }
     };
-    namespace detail{
-        struct HotkeyHash{
-            static std::size_t operator()(Keypress rec){
-                return static_cast<std::size_t>(rec.key()) ^ static_cast<std::size_t>(rec.mods());
-            }
-        };
-    }
+}
+namespace std{
+    template<>
+    struct hash<sfe::Keypress>{
+        static size_t operator()(sfe::Keypress rec){
+            return static_cast<size_t>(rec.key()) ^ static_cast<size_t>(rec.mods());
+        }
+    };
+}
+namespace sfe{
     class Window;
     class HotkeyRecords{
-        std::unordered_map<Keypress,Command,detail::HotkeyHash> cmd;
+        std::unordered_map<Keypress,Command> cmd;
         public:
             void add(Keypress k,Command c){
                 cmd.insert_or_assign(k,c);
@@ -82,5 +86,19 @@ namespace sfe{
                 }
                 return false;
             }
+    };
+    struct NodeProperties{
+        constexpr static std::uint32_t N_ARY = std::numeric_limits<std::uint32_t>::max();
+        std::uint32_t id;
+        std::uint32_t arity;
+    };
+    class CodeEntry;
+    class NodeKeyConfig{
+        std::unordered_map<Keypress,NodeProperties> suffix;
+        public:
+            void register_key(Keypress kc,NodeProperties prop){
+                suffix.try_emplace(kc,prop);
+            }
+            bool handle(CodeEntry& e,Keypress k) const;
     };
 }

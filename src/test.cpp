@@ -8,6 +8,7 @@
 #include<cppp/int.hpp>
 #include<sgl/sgl.hpp>
 #include<bbe/bbe.hpp>
+#include<filesystem>
 using namespace std::literals;
 using namespace cppp::literals;
 sgl::FreeType ftlib;
@@ -16,86 +17,21 @@ sgl::CachedFont code_font(){
     gc.font().init_width_pt(19<<6uz,191,191);
     return gc;
 }
-void steal_lhs(sfe::VisualASTNode& ui,bbe::ASTNode&& node){
-    cppp::swap(node,ui.node());
-    // node is now old
-    sfe::VisualASTNode old_ui{ui.node(),sfe::VisualASTNode::no_populate};
-    cppp::swap(old_ui,ui);
-    
-    old_ui.repoint(ui.node().children()[0] = std::move(node));
-    old_ui.rerender_children();
-    ui.populate(std::move(old_ui));
-}
-void builtin_unary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::CodeEntry& ed){
-    steal_lhs(sel,{bbe::NodeType::CALL_BUILTIN,prim,1});
-    ed.subst_sel(sel);
-    ed.set_select_after(true);
-}
-void builtin_binary(sfe::VisualASTNode& sel,std::uint32_t prim,sfe::CodeEntry& ed){
-    bool second = sel.type() != bbe::NodeType::NTYPE;
-    steal_lhs(sel,{bbe::NodeType::CALL_BUILTIN,prim,2});
-    sel.node().children()[1uz] = {bbe::NodeType::NTYPE};
-    sel.rerender_except_first();
-    ed.subst_sel(sel);
-    ed.enter(second,false);
-}
-bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const SDL_KeyboardEvent& ke){
-    bool shift = (ke.mod & SDL_KMOD_SHIFT);
+bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
+    if(kc.handle(ed,ke)) return true;
+    bool shift = ke.mods() & sfe::KeyModifiers::SHIFT;
     if(auto sel=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
-        switch(ke.key){
-            case SDLK_EQUALS:
-                builtin_binary(*sel,shift?10_u32:50_u32,ed);
-                return true;
-            case SDLK_MINUS: if(!shift){
-                builtin_binary(*sel,20,ed);
-                return true;
-            }else break;
-            case SDLK_COMMA: if(shift){
-                builtin_binary(*sel,51,ed);
-                return true;
-            }else if(sel->type() == bbe::NodeType::PACK && ed.selected_after()){
-                sel->node().children().emplace({bbe::NodeType::NTYPE});
-                sel->rerender_children();
-                return true;
-            }else break;
-            case SDLK_1: if(shift && !ed.selected_after()){
-                builtin_unary(*sel,60,ed);
-                return true;
-            }else break;
-            case SDLK_3: if(shift){
-                builtin_unary(*sel,25,ed);
-                return true;
-            }else break;
-            case SDLK_9: if(shift){
-                builtin_binary(*sel,0,ed);
-                return true;
-            }else break;
-            case SDLK_SLASH: if(shift){
-                bool second = sel->type() != bbe::NodeType::NTYPE;
-                steal_lhs(*sel,{bbe::NodeType::FORK,3});
-                sel->node().children()[1uz] = {bbe::NodeType::NTYPE};
-                sel->node().children()[2uz] = {bbe::NodeType::NTYPE};
-                sel->rerender_except_first();
-                ed.enter(second,false);
-                return true;
-            }else break;
-            case SDLK_LEFTBRACKET:
-                steal_lhs(*sel,{bbe::NodeType::PACKIND,0,1});
-                ed.set_select_after(true);
-                break;
-            default:;
-        }
         switch(sel->type()){
             using enum bbe::NodeType;
             case BOOL:
-                if(ke.key == SDLK_RETURN){
+                if(ke.key() == SDLK_RETURN){
                     sel->setp32(1-sel->p32());
                 }
                 break;
             case UINT32: case FNSYM: case PACKIND:
                 if(ed.selected_after()){
-                    if(!(ke.mod&(SDL_KMOD_SHIFT|SDL_KMOD_CTRL|SDL_KMOD_ALT))){
-                        switch(ke.key){
+                    if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
+                        switch(ke.key()){
                             case SDLK_BACKSPACE:
                                 if(sel->p32()){
                                     sel->setp32(sel->p32() / 10);
@@ -104,11 +40,11 @@ bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const SDL_KeyboardEvent& ke){
                                 break;
                             case SDLK_0: case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
                             case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9:
-                                if((static_cast<std::uint64_t>(sel->p32())*10+static_cast<std::uint64_t>(ke.key-SDLK_0))>std::numeric_limits<std::uint32_t>::max()){
+                                if((static_cast<std::uint64_t>(sel->p32())*10+static_cast<std::uint64_t>(ke.key()-SDLK_0))>std::numeric_limits<std::uint32_t>::max()){
                                     using namespace std::chrono_literals;
                                     toast.reset(u8"Overflow!"s,810ms);
                                 }else{
-                                    sel->setp32(sel->p32()*10 + static_cast<std::uint32_t>(ke.key-SDLK_0));
+                                    sel->setp32(sel->p32()*10 + static_cast<std::uint32_t>(ke.key()-SDLK_0));
                                 }
                                 return true;
                         }
@@ -116,7 +52,7 @@ bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const SDL_KeyboardEvent& ke){
                 }
                 break;
             case NTYPE:
-                switch(ke.key){
+                switch(ke.key()){
                     case SDLK_A:
                         sel->node() = {bbe::NodeType::ARG};
                         sel->rerender_children();
@@ -217,11 +153,18 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
     }
 }
 int main(){
-    if(int ret=std::system("g++ -O3 -m64 -std=c++26 -s -c timing_helper.cpp -o timing_helper.o")){
-        throw std::runtime_error(std::format("precompiling timing_helper failed with: {}"sv,ret));
+    if(std::filesystem::last_write_time(u8"timing_helper.cpp"sv) > std::filesystem::last_write_time(u8"timing_helper.o"sv)){
+        if(int ret=std::system("g++ -O3 -m64 -std=c++26 -s -c timing_helper.cpp -o timing_helper.o")){
+            throw std::runtime_error(std::format("precompiling timing_helper failed with: {}"sv,ret));
+        }
     }
     sfe::Project proj;
     bbe::ErrorDatabase edb;
+    sfe::NodeKeyConfig kc;
+    kc.register_key({SDLK_MINUS},{20,2});
+    kc.register_key({SDLK_EQUALS},{50,2});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_EQUALS},{10,2});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{0,2});
     
     bbe::type_id b_uint32{proj.entities().types().T_UINT32};
     auto fid = proj.entities().functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32});
@@ -265,8 +208,9 @@ int main(){
                     ed.command_palette().append(e.text.text);
                     break;
                 case SDL_EVENT_KEY_DOWN:
-                    if(ed.is_command_palette_open() || !keydown(ed.toast(),ed.code(),e.key)){
-                        ed.keydown(e.key);
+                    sfe::Keypress kp{e.key};
+                    if(ed.is_command_palette_open() || !keydown(ed.toast(),ed.code(),kc,kp)){
+                        ed.keydown(kp);
                     }
                     edb.clear();
                     fn.ast().recursively_recalculate_result_type(proj.entities(),edb,fn.signature());
