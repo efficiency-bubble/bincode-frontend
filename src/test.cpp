@@ -93,46 +93,6 @@ bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,s
     }
     return false;
 }
-cppp::str strtype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
-    if(tid == tdb.T_ERROR){
-        return u8"error-type"s;
-    }
-    cppp::str tag;
-    const bbe::TypeInfo& t = tdb[tid];
-    switch(t.type()){
-        using enum bbe::TypeCategory;
-        case VOID:
-            return u8"void"s;
-        case SIGNED_INTEGRAL:
-            if(t.size() == 1){
-                tag = u8"bool"s; // TODO: special case bool better
-            }else{
-                tag = cppp::format<u8"int{}_t"_ts>(t.size()*8);
-            }
-            break;
-        case UNSIGNED_INTEGRAL:
-            tag = cppp::format<u8"uint{}_t"_ts>(t.size()*8);
-            break;
-        case FUNCTION_POINTER: {
-            const bbe::FunctionSignature& sig = t.function_signature();
-            tag = cppp::format<u8"{} => {}"_ts>(strtype(sig.parameter(),tdb),strtype(sig.return_type(),tdb));
-            break;
-        }
-        case PACK:
-            tag = u8"pack["s;
-            for(const auto& c : t.pack_contents().types()){
-                tag.append(strtype(c,tdb));
-                tag.append(u8", "sv);
-            }
-            tag.pop_back();
-            tag.back() = u8']';
-            break;
-        default:
-            tag = u8"unknown"s;
-            break;
-    }
-    return cppp::format<u8"{} ({}/{}:{})"_ts>(tag,tdb[tid].size(),tdb[tid].alignment(),tdb[tid].stride());
-}
 cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
     switch(tid){
         case bbe::TypeDatabase::T_VOID:
@@ -146,7 +106,7 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
         case bbe::TypeDatabase::T_ERROR:
             return {1.0f,0.0f,0.0f};
         default:
-            if(tdb[tid].type() == bbe::TypeCategory::FUNCTION_POINTER){
+            if(tdb[tid]->type() == bbe::TypeCategory::FUNCTION_POINTER){
                 return {0.6274509803921569f,0.9568627450980393f,0.2235294117647059f};
             }
             return {0.8588235294117647f, 0.23137254901960785f, 0.9215686274509803f};
@@ -166,7 +126,7 @@ int main(){
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_EQUALS},{10,2});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{0,2});
     
-    bbe::type_id b_uint32{proj.entities().types().T_UINT32};
+    const bbe::TypeInfo* b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
     auto fid = proj.entities().functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32});
     proj.names().name_function(fid,u8"testfn"s);
     bbe::Function& fn = proj.entities().functions()[fid];
@@ -229,7 +189,7 @@ int main(){
             for(const auto& em : edb.query(&van->node())){
                 ed.graphics_context().draw_text(em.reason(),{10.0f,y},DIAG_TEXT_SCALE,{1.0f,0.0f,0.0f});
             }
-            ed.graphics_context().draw_text(strtype(van->node().result_type(),proj.entities().types()),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(van->node().result_type(),proj.entities().types()));
+            ed.graphics_context().draw_text(proj.names().display_type_name(proj.entities().types().getopt(van->node().result_type())),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(van->node().result_type(),proj.entities().types()));
         }
         ed.render_overlay();
         ed.system_window().flip();

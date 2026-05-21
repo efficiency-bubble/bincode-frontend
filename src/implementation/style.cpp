@@ -3,12 +3,50 @@
 #include<cppp/binary.hpp>
 #include<span>
 namespace sfe{
-    cppp::str NameDatabase::display_function_name(std::uint32_t id) const{
+    cppp::str NameDatabase::display_function_name(bbe::func_id id) const{
         if(auto it=fnames.find(id);it!=fnames.end()){
             return it->second;
         }else{
             using namespace cppp::literals;
             return cppp::format<u8"[unknown function {}]"_ts>(id);
+        }
+    }
+    cppp::str NameDatabase::display_type_name(const bbe::TypeInfo* ti) const{
+        using namespace cppp::literals;
+        using namespace std::literals;
+        if(!ti) return u8"[error-type]"s;
+        switch(ti->type()){
+            using enum bbe::TypeCategory;
+            case VOID:
+                return u8"void"s;
+            case SIGNED_INTEGRAL:
+                if(ti->size() == 1){
+                    return u8"bool"s; // TODO: special case bool better
+                }else{
+                    return cppp::format<u8"int{}_t"_ts>(ti->size()*8);
+                }
+            case UNSIGNED_INTEGRAL:
+                return cppp::format<u8"uint{}_t"_ts>(ti->size()*8);
+            case FUNCTION_POINTER: {
+                const bbe::FunctionSignature& sig = ti->function_signature();
+                return cppp::format<u8"{} => {}"_ts>(display_type_name(sig.parameter()),display_type_name(sig.return_type()));
+            }
+            case PACK: {
+                cppp::str name{u8"pack["s};
+                for(const bbe::TypeInfo* t : ti->pack_contents().types()){
+                    name.append(display_type_name(t));
+                    name.append(u8", "sv);
+                }
+                name.pop_back();
+                name.back() = u8']';
+                return name;
+            }
+            default:
+                if(auto it=dtnames.find(ti->index());it!=dtnames.end()){
+                    return it->second;
+                }else{
+                    return cppp::format<u8"[unknown type {}]"_ts>(ti->index());
+                }
         }
     }
     NameDatabase::NameDatabase(cppp::frozen_byte_view& v){
