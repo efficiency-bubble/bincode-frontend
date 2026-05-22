@@ -23,11 +23,7 @@ namespace sfe{
                 cmdv.try_emplace(std::move(n),c);
             }
             Command get(cppp::sv k) const{
-                // TODO: replace with C++26 heterogenous at
-                if(auto it=cmdv.find(k);it!=cmdv.end()){
-                    return it->second;
-                }
-                throw std::logic_error("CommandSet::at: no such command"s);
+                return cmdv.at(k);
             }
             const cppp::ordered_strmap<Command>& commands() const{
                 return cmdv;
