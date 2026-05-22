@@ -106,7 +106,7 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
         case bbe::TypeDatabase::T_ERROR:
             return {1.0f,0.0f,0.0f};
         default:
-            if(tdb[tid]->type() == bbe::TypeCategory::FUNCTION_POINTER){
+            if(tdb[tid].type() == bbe::TypeCategory::FUNCTION_POINTER){
                 return {0.6274509803921569f,0.9568627450980393f,0.2235294117647059f};
             }
             return {0.8588235294117647f, 0.23137254901960785f, 0.9215686274509803f};
@@ -126,10 +126,9 @@ int main(){
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_EQUALS},{10,2});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{0,2});
     
-    const bbe::TypeInfo* b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
-    auto fid = proj.entities().functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32});
-    proj.names().name_function(fid,u8"testfn"s);
-    bbe::Function& fn = proj.entities().functions()[fid];
+    const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
+    bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{&b_uint32,&b_uint32});
+    proj.names().name_function(fn.index(),u8"testfn"s);
     fn.ast() = {bbe::NodeType::NTYPE};
     
     
