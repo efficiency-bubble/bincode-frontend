@@ -3,6 +3,7 @@
 #include<SDL3/SDL_keycode.h>
 #include<SDL3/SDL_events.h>
 #include<cppp/string.hpp> // stringifying keybinds
+#include<bbe/ast.hpp>
 #include<utility>
 namespace sfe{
     enum class KeyModifiers : std::uint8_t{
@@ -89,15 +90,20 @@ namespace sfe{
     };
     struct NodeProperties{
         constexpr static std::uint32_t N_ARY = std::numeric_limits<std::uint32_t>::max();
-        std::uint32_t id;
+        bbe::NodeType nt;
+        std::uint32_t prim;
         std::uint32_t arity;
     };
     class CodeEntry;
     class NodeKeyConfig{
         std::unordered_map<Keypress,NodeProperties> suffix;
+        std::unordered_map<Keypress,NodeProperties> replace;
         public:
             void register_key(Keypress kc,NodeProperties prop){
                 suffix.try_emplace(kc,prop);
+            }
+            void register_node(Keypress kc,NodeProperties prop){
+                replace.try_emplace(kc,prop);
             }
             bool handle(CodeEntry& e,Keypress k) const;
     };

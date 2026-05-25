@@ -12,9 +12,9 @@ namespace sfe{
         old_ui.rerender_children();
         ui.populate(std::move(old_ui));
     }
-    static void builtin_n_ary(VisualASTNode& sel,std::uint32_t prim,CodeEntry& ed,std::uint32_t arity){
-        bool second = sel.type() != bbe::NodeType::NTYPE;
-        steal_lhs(sel,{bbe::NodeType::CALL_BUILTIN,prim,arity});
+    static void builtin_n_ary(VisualASTNode& sel,bbe::NodeType nt,std::uint32_t prim,CodeEntry& ed,std::uint32_t arity){
+        bool second = (prim > 1) && (sel.type() != bbe::NodeType::NTYPE);
+        steal_lhs(sel,{nt,prim,arity});
         for(std::uint32_t i=1;i<arity;++i){
             sel.node().children()[i] = {bbe::NodeType::NTYPE};
         }
@@ -24,8 +24,20 @@ namespace sfe{
     }
     bool NodeKeyConfig::handle(CodeEntry& e,Keypress k) const{
         if(auto* n=dynamic_cast<VisualASTNode*>(&e.selected())){
+            if(n->node().type() == bbe::NodeType::NTYPE){
+                if(auto it=replace.find(k);it!=replace.end()){
+                    n->node() = {it->second.nt,it->second.prim,it->second.arity};
+                    for(std::uint32_t i=0;i<it->second.arity;++i){
+                        n->node().children()[i] = {bbe::NodeType::NTYPE};
+                    }
+                    n->rerender_children();
+                    e.set_select_after(true);
+                    return true;
+                }
+            }
             if(auto it=suffix.find(k);it!=suffix.end()){
-                builtin_n_ary(*n,it->second.id,e,it->second.arity);
+                builtin_n_ary(*n,it->second.nt,it->second.prim,e,it->second.arity);
+                return true;
             }
         }
         return false;

@@ -19,7 +19,6 @@ sgl::CachedFont code_font(){
 }
 bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
     if(kc.handle(ed,ke)) return true;
-    bool shift = ke.mods() & sfe::KeyModifiers::SHIFT;
     if(auto sel=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
         switch(sel->type()){
             using enum bbe::NodeType;
@@ -51,43 +50,6 @@ bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,s
                     }
                 }
                 break;
-            case NTYPE:
-                switch(ke.key()){
-                    case SDLK_A:
-                        sel->node() = {bbe::NodeType::ARG};
-                        sel->rerender_children();
-                        ed.set_select_after(true);
-                        break;
-                    case SDLK_E:
-                        sel->node() = {bbe::NodeType::BOOL};
-                        sel->rerender_children();
-                        ed.set_select_after(true);
-                        break;
-                    case SDLK_D:
-                        sel->node() = {bbe::NodeType::UINT32};
-                        sel->rerender_children();
-                        ed.set_select_after(true);
-                        break;
-                    case SDLK_F:
-                        sel->node() = {bbe::NodeType::FNSYM};
-                        sel->rerender_children();
-                        ed.set_select_after(true);
-                        break;
-                    case SDLK_X:
-                        sel->node() = {bbe::NodeType::PACKIND,0,1};
-                        sel->node().children().front() = {bbe::NodeType::ARG};
-                        sel->rerender_children();
-                        ed.set_select_after(true);
-                        break;
-                    case SDLK_8: if(shift){
-                        sel->node() = {bbe::NodeType::PACK,0,1};
-                        sel->node().children().front() = {bbe::NodeType::NTYPE};
-                        sel->rerender_children();
-                        ed.enter(0,false);
-                        break;
-                    }else break;
-                    default:;
-                }
             default:;
         }
     }
@@ -121,10 +83,17 @@ int main(){
     sfe::Project proj;
     bbe::ErrorDatabase edb;
     sfe::NodeKeyConfig kc;
-    kc.register_key({SDLK_MINUS},{20,2});
-    kc.register_key({SDLK_EQUALS},{50,2});
-    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_EQUALS},{10,2});
-    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{0,2});
+    kc.register_key(SDLK_MINUS,{bbe::NodeType::CALL_BUILTIN,20,2});
+    kc.register_key(SDLK_EQUALS,{bbe::NodeType::CALL_BUILTIN,50,2});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_EQUALS},{bbe::NodeType::CALL_BUILTIN,10,2});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{bbe::NodeType::CALL_BUILTIN,0,2});
+    kc.register_key(SDLK_LEFTBRACKET,{bbe::NodeType::PACKIND,0,1});
+    
+    kc.register_node(SDLK_A,{bbe::NodeType::ARG,0,0});
+    kc.register_node(SDLK_E,{bbe::NodeType::BOOL,0,0});
+    kc.register_node(SDLK_D,{bbe::NodeType::UINT32,0,0});
+    kc.register_node(SDLK_F,{bbe::NodeType::FNSYM,0,0});
+    kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::PACK,0,1});
     
     const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
     bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{&b_uint32,&b_uint32});
