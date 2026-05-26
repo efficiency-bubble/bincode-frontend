@@ -83,9 +83,10 @@ int main(){
     sfe::Project proj;
     bbe::ErrorDatabase edb;
     sfe::NodeKeyConfig kc;
-    kc.register_key(SDLK_MINUS,{bbe::NodeType::CALL_BUILTIN,20,2});
-    kc.register_key(SDLK_EQUALS,{bbe::NodeType::CALL_BUILTIN,50,2});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_EQUALS},{bbe::NodeType::CALL_BUILTIN,10,2});
+    kc.register_key(SDLK_MINUS,{bbe::NodeType::CALL_BUILTIN,20,2});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::CALL_BUILTIN,30,2});
+    kc.register_key(SDLK_EQUALS,{bbe::NodeType::CALL_BUILTIN,50,2});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{bbe::NodeType::CALL_BUILTIN,0,2});
     kc.register_key(SDLK_LEFTBRACKET,{bbe::NodeType::PACKIND,0,1});
     
