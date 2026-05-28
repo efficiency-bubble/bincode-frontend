@@ -28,8 +28,10 @@ namespace sfe{
             case bbe::NodeType::CALL_BUILTIN:
                 switch(p32()){
                     case 10: // +
-                    case 11: // -
+                    case 20: // -
                         return 3;
+                    case 30: // *
+                        return 4;
                     case 50: // =
                     case 51: // <=
                         return 2;
@@ -75,8 +77,11 @@ namespace sfe{
                     case 10:
                         draw_binop(u8"+"sv,_children,gc,errors,names,cursor,pos,priority());
                         break;
-                    case 20 :
+                    case 20:
                         draw_binop(u8"-"sv,_children,gc,errors,names,cursor,pos,priority());
+                        break;
+                    case 30:
+                        draw_binop(u8"*"sv,_children,gc,errors,names,cursor,pos,priority());
                         break;
                     case 25:
                         gc.draw_text_at_cursor(u8"print("sv,pos,1.0f,WHITE);
