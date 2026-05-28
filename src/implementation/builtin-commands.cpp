@@ -78,22 +78,22 @@ namespace sfe::commands{
                 });
                 std::span<int> a;
                 if(delta.count() < 1000){
-                    cppp::format_to<u8" in {} µs (dfg inter); "_ts>(rbuf,delta.count());
+                    cppp::format_to<u8" in {} µs (dfg inter)"_ts>(rbuf,delta.count());
                 }else{
-                    cppp::format_to<u8" in {:.2f} ms (dfg inter); "_ts>(rbuf,static_cast<float>(delta.count())/1000.0f);
+                    cppp::format_to<u8" in {:.2f} ms (dfg inter)"_ts>(rbuf,static_cast<float>(delta.count())/1000.0f);
                 }
             }
-            {
-                bbe::inter::rtl::CompiledFunctionPool compiled{ed.project().entities()};
-                µs delta = time_execution([&]{
-                    bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{30}}),rbuf);
-                });
-                if(delta.count() < 1000){
-                    cppp::format_to<u8" in {} µs (rtl inter)"_ts>(rbuf,delta.count());
-                }else{
-                    cppp::format_to<u8" in {:.2f} ms (rtl inter)"_ts>(rbuf,static_cast<float>(delta.count())/1000.0f);
-                }
-            }
+            // {
+            //     bbe::inter::rtl::CompiledFunctionPool compiled{ed.project().entities()};
+            //     µs delta = time_execution([&]{
+            //         bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{30}}),rbuf);
+            //     });
+            //     if(delta.count() < 1000){
+            //         cppp::format_to<u8" in {} µs (rtl inter)"_ts>(rbuf,delta.count());
+            //     }else{
+            //         cppp::format_to<u8" in {:.2f} ms (rtl inter)"_ts>(rbuf,static_cast<float>(delta.count())/1000.0f);
+            //     }
+            // }
             ed.toast().reset(std::move(rbuf),3s);
         }catch(const std::exception& e){
             ed.toast().reset(cppp::tou8(std::string_view(e.what())),3s);
