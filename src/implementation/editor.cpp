@@ -2,8 +2,8 @@
 #include<cppp/format.hpp>
 namespace sfe{
     void CodeEntry::navigate(bool right,bool fast){
-        bool nochildren = cursor.trail().top().children().empty();
-        if(nochildren && (cursor.trail().top().fast() || fast)){
+        bool nochildren = cursor.selected().children().empty();
+        if(nochildren && (cursor.selected().placeholder() || fast)){
             cursor.set_after(right);
         }
         if(cursor.is_after() == right){
@@ -25,7 +25,7 @@ namespace sfe{
                 cursor.set_after(!right);
             } 
         }else if(!nochildren){
-            cursor.trail().enter(right?0:static_cast<std::uint32_t>(cursor.trail().top().children().size()-1));
+            cursor.trail().enter(right?0:static_cast<std::uint32_t>(cursor.selected().children().size()-1));
         }else{
             cursor.set_after(right);
         }
@@ -45,16 +45,17 @@ namespace sfe{
                 cursor.trail().home();
                 break;
             case SDLK_BACKSPACE:
-                if(auto van=dynamic_cast<VisualASTNode*>(&selected())){
-                    if(van->type() == bbe::NodeType::NTYPE){
+                if(selected().type() == VisualNodeType::A){
+                    bbe::ASTNode& an = selected().a();
+                    if(an.type() == bbe::NodeType::NTYPE){
                         if(!cursor.trail().has_nesting()){
                             break; // can't delete root node
                         }
                         cursor.trail().leave();
                         cursor.set_after(false);
                     }
-                    van->node() = {bbe::NodeType::NTYPE,0};
-                    selected().rerender_children();
+                    an = {bbe::NodeType::NTYPE,0};
+                    selected().rerender();
                 }
                 break;
         }

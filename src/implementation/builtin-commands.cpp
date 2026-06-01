@@ -16,17 +16,17 @@
 #include<memory>
 namespace sfe::commands{
     using namespace cppp::literals;
-    void open_command_palette(sfe::Window& w){
+    void open_command_palette(Window& w){
         w.open_command_palette();
     }
-    void save(sfe::Window& ed){
+    void save(Window& ed){
         cppp::bytes save;
-        static_cast<const sfe::VisualFunctionNode&>(ed.code().root()).func().ast().serialize(save);
+        ed.code().root().f().ast().serialize(save);
         cppp::BinaryFile bf{u8"testprog"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
         bf.write(save);
         ed.toast().reset(cppp::format<u8"Saved {} bytes"_ts>(save.size()),1s);
     }
-    void load(sfe::Window& ed){
+    void load(Window& ed){
         cppp::BinaryFile bf{u8"testprog"s,std::ios_base::in|std::ios_base::binary};
         cppp::bytes save;
         std::array<std::byte,1024uz> buf;
@@ -35,15 +35,15 @@ namespace sfe::commands{
             nread = bf.read(buf);
             save.append(std::span{buf.data(),nread});
         }while(nread);
-        static_cast<sfe::VisualFunctionNode&>(ed.code().root()).func().ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
-        ed.code().root().rerender_children();
+        ed.code().root().f().ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
+        ed.code().root().rerender();
         ed.code().home();
     }
-    void reset_cursor(sfe::Window& ed){
+    void reset_cursor(Window& ed){
         ed.code().home();
-        ed.code().root().rerender_children();
+        ed.code().root().rerender();
     }
-    void quit(sfe::Window&){
+    void quit(Window&){
         SDL_Event ev{.quit={
             .type=SDL_EVENT_QUIT,
             .reserved=0,
@@ -51,9 +51,9 @@ namespace sfe::commands{
         }};
         SDL_PushEvent(&ev);
     }
-    void debug_selection(sfe::Window& ed){
-        if(auto* vn=dynamic_cast<sfe::VisualASTNode*>(&ed.code().selected())){
-            cppp::print<u8"{:p} = {}"_ts>(static_cast<void*>(vn),std::to_underlying(vn->type()));
+    void debug_selection(Window& ed){
+        if(ed.code().selected().type() == VisualNodeType::A){
+            cppp::print<u8"{:p} = {}"_ts>(static_cast<void*>(&ed.code().selected().a()),std::to_underlying(ed.code().selected().a().type()));
         }
         std::println();
     }
@@ -68,7 +68,7 @@ namespace sfe::commands{
             return std::chrono::duration_cast<µs>(dur);
         }
     }
-    void interpret(sfe::Window& ed){
+    void interpret(Window& ed){
         try{
             cppp::str rbuf;
             {
@@ -99,14 +99,14 @@ namespace sfe::commands{
             ed.toast().reset(cppp::tou8(std::string_view(e.what())),3s);
         }
     }
-    void compile_and_run(sfe::Window& ed){
+    void compile_and_run(Window& ed){
         try{
             cppp::str rbuf;
             {
                 bbe::formats::elf::Elf elf;
                 bbe::targets::x86::Program prog;
                 {
-                    bbe::targets::x86::Function fn{ed.code().root().func(),ed.project().entities().types()};
+                    bbe::targets::x86::Function fn{ed.code().root().f(),ed.project().entities().types()};
                     cppp::format_to<u8"{} bytes; "_ts>(rbuf,fn.instructions().size());
                     prog.export_function(u8"example"s,std::move(fn));
                 }

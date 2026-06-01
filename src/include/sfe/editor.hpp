@@ -16,11 +16,11 @@ namespace sfe{
         UICursor cursor;
         void navigate(bool right,bool fast);
         public:
-            CodeEntry(VisualFunctionNode&& root) : cursor(std::move(root)){}
-            const VisualFunctionNode& root() const{
+            CodeEntry(VisualNode&& root) : cursor(std::move(root)){}
+            const VisualNode& root() const{
                 return cursor.trail().root();
             }
-            VisualFunctionNode& root(){
+            VisualNode& root(){
                 return cursor.trail().root();
             }
             void render_full(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,cppp::fvec2& pos) const{
@@ -28,9 +28,6 @@ namespace sfe{
             }
             void leave(){
                 cursor.trail().leave();
-            }
-            void subst_sel(VisualASTNode& other){
-                cursor.trail().subst(other);
             }
             void home(){
                 cursor.trail().home();
@@ -41,10 +38,10 @@ namespace sfe{
                 cursor.set_after(from_right);
             }
             const VisualNode& selected() const{
-                return cursor.trail().top();
+                return cursor.selected();
             }
             VisualNode& selected(){
-                return cursor.trail().top();
+                return cursor.selected();
             }
             void set_select_after(bool after){
                 cursor.set_after(after);
@@ -64,7 +61,7 @@ namespace sfe{
         std::optional<CommandPalette> cp;
         Toast _toast;
         public:
-            Window(Project& proj,sgl::Window&& w,VisualFunctionNode&& root,GraphicsContext&& gc) : pr(&proj), w(std::move(w)), ce(std::move(root)), gc(std::move(gc)){}
+            Window(Project& proj,sgl::Window&& w,VisualNode&& root,GraphicsContext&& gc) : pr(&proj), w(std::move(w)), ce(std::move(root)), gc(std::move(gc)){}
             const Project& project() const{
                 return *pr;
             }

@@ -1,4 +1,3 @@
-#include<sfe/cursor.hpp>
 #include<sfe/toast.hpp>
 #include<sfe/editor.hpp>
 #include<sfe/style.hpp>
@@ -19,39 +18,43 @@ sgl::CachedFont code_font(){
 }
 bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
     if(kc.handle(ed,ke)) return true;
-    if(auto sel=dynamic_cast<sfe::VisualASTNode*>(&ed.selected())){
-        switch(sel->type()){
-            using enum bbe::NodeType;
-            case BOOL:
-                if(ke.key() == SDLK_RETURN){
-                    sel->setp32(1-sel->p32());
-                }
-                break;
-            case UINT32: case FNSYM: case PACKIND:
-                if(ed.selected_after()){
-                    if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
-                        switch(ke.key()){
-                            case SDLK_BACKSPACE:
-                                if(sel->p32()){
-                                    sel->setp32(sel->p32() / 10);
+    switch(ed.selected().type()){
+        case sfe::VisualNodeType::A: {
+            bbe::ASTNode& a = ed.selected().a();
+            switch(a.type()){
+                using enum bbe::NodeType;
+                case BOOL:
+                    if(ke.key() == SDLK_RETURN){
+                        a.setp32(1-a.getp32());
+                    }
+                    break;
+                case UINT32: case FNSYM: case PACKIND:
+                    if(ed.selected_after()){
+                        if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
+                            switch(ke.key()){
+                                case SDLK_BACKSPACE:
+                                    if(a.getp32()){
+                                        a.setp32(a.getp32() / 10);
+                                        return true;
+                                    }
+                                    break;
+                                case SDLK_0: case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
+                                case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9:
+                                    if((static_cast<std::uint64_t>(a.getp32())*10+static_cast<std::uint64_t>(ke.key()-SDLK_0))>std::numeric_limits<std::uint32_t>::max()){
+                                        using namespace std::chrono_literals;
+                                        toast.reset(u8"Overflow!"s,810ms);
+                                    }else{
+                                        a.setp32(a.getp32()*10 + static_cast<std::uint32_t>(ke.key()-SDLK_0));
+                                    }
                                     return true;
-                                }
-                                break;
-                            case SDLK_0: case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
-                            case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9:
-                                if((static_cast<std::uint64_t>(sel->p32())*10+static_cast<std::uint64_t>(ke.key()-SDLK_0))>std::numeric_limits<std::uint32_t>::max()){
-                                    using namespace std::chrono_literals;
-                                    toast.reset(u8"Overflow!"s,810ms);
-                                }else{
-                                    sel->setp32(sel->p32()*10 + static_cast<std::uint32_t>(ke.key()-SDLK_0));
-                                }
-                                return true;
+                            }
                         }
                     }
-                }
-                break;
-            default:;
+                    break;
+                default:;
+            }
         }
+        case sfe::VisualNodeType::F:;
     }
     return false;
 }
@@ -106,7 +109,7 @@ int main(){
     SDL_SetAppMetadata("edBCC (SGL)",nullptr,"edbcc.cpp");
     SDL_InitSubSystem(SDL_INIT_VIDEO);
 
-    sfe::Window ed{proj,{u8"edBCC (SGL)"s,1200,600},{fn,0},{code_font(),{1200,600},1.0f}};
+    sfe::Window ed{proj,{u8"edBCC (SGL)"s,1200,600},fn,{code_font(),{1200,600},1.0f}};
     { // scope for all GL objects. Their dtors must run before we destroy everything with SDL_Quit().
     glClearColor(0.0f,0.0f,0.0f,1.0f);
     glEnable(GL_CULL_FACE);
@@ -151,14 +154,15 @@ int main(){
         if(ed.toast().alive()){
             ed.graphics_context().draw_text(ed.toast().message(),{10.0f,10.0f+ed.graphics_context().ascender()*0.6f},0.6f,{1.0f,0.0f,0.0f});
         }
-        if(auto van=dynamic_cast<const sfe::VisualASTNode*>(&ed.code().selected())){
+        if(ed.code().selected().type() == sfe::VisualNodeType::A){
+            bbe::ASTNode& an = ed.code().selected().a();
             constexpr static float DIAG_TEXT_SCALE = 0.4f;
             float winheight_f = static_cast<float>(ed.graphics_context().cmap().win_size().y());
             float y = winheight_f * 0.75f + ed.graphics_context().ascender()*DIAG_TEXT_SCALE;
-            for(const auto& em : edb.query(&van->node())){
+            for(const auto& em : edb.query(&an)){
                 ed.graphics_context().draw_text(em.reason(),{10.0f,y},DIAG_TEXT_SCALE,{1.0f,0.0f,0.0f});
             }
-            ed.graphics_context().draw_text(proj.names().display_type_name(proj.entities().types().getopt(van->node().result_type())),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(van->node().result_type(),proj.entities().types()));
+            ed.graphics_context().draw_text(proj.names().display_type_name(proj.entities().types().getopt(an.result_type())),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(an.result_type(),proj.entities().types()));
         }
         ed.render_overlay();
         ed.system_window().flip();

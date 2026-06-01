@@ -1,129 +1,184 @@
 #pragma once
 #include<cppp/type-erasure.hpp>
 #include<bbe/function.hpp>
-#include<cppp/vector.hpp>
 #include<cppp/swap.hpp>
 #include<bbe/ast.hpp>
+#include<type_traits>
 #include<concepts>
 #include<cstdint>
 #include<ranges>
 #include<vector>
 #include"graphics.hpp"
-#include"cursor.hpp"
 #include"style.hpp"
 namespace sfe{
-    using UICursor = Cursor<class VisualNode,class VisualFunctionNode>;
-    class VisualNode{
-        public:
-            template<typename Self>
-            cppp::erased_span<Self> children(this Self& v){
-                return static_cast<cppp::copy_const_t<Self,VisualNode>&>(v).do_children().template downcast<Self>();
-            }
-            virtual void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const = 0;
-            virtual bool fast() const = 0;
-            virtual void rerender_children() = 0;
-        protected:
-            using children_t = cppp::erased_span<VisualNode>;
-            using const_children_t = cppp::erased_span<const VisualNode>;
-            virtual children_t do_children() = 0;
-            virtual const_children_t do_children() const = 0;
-            ~VisualNode(){}
+    enum class VisualNodeType{
+        A,F
     };
-    class VisualASTNode final : public VisualNode{
-        bbe::ASTNode* nd;
-        std::vector<VisualASTNode> _children;
-        friend void swap(VisualASTNode& lhs,VisualASTNode& rhs){
-            cppp::swap(lhs.nd,rhs.nd);
+    class UICursor;
+    class VisualNode{
+        std::vector<VisualNode> _children;
+        void* nd;
+        VisualNodeType _type;
+        friend void swap(VisualNode& lhs,VisualNode& rhs){
             cppp::swap(lhs._children,rhs._children);
+            cppp::swap(lhs.nd,rhs.nd);
         }
         struct no_populate_t{};
         public:
             constexpr static no_populate_t no_populate{};
-            VisualASTNode(bbe::ASTNode& nd,no_populate_t) : nd(&nd){}
-            VisualASTNode(bbe::ASTNode& nd) : nd(&nd){
-                populate();
+            VisualNode(bbe::ASTNode& nd,no_populate_t) : nd(&nd), _type(VisualNodeType::A){}
+            VisualNode(bbe::ASTNode& nd) : nd(&nd), _type(VisualNodeType::A){
+                apopulate();
             }
-            void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const override;
+            VisualNode(bbe::Function& f) : nd(&f), _type(VisualNodeType::F){
+                _children.emplace_back(f.ast());
+            }
+            const std::vector<VisualNode>& children() const{
+                return _children;
+            }
+            std::vector<VisualNode>& children(){
+                return _children;
+            }
+            void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const;
             void repoint(bbe::ASTNode& other){
                 nd = &other;
             }
             void clear(){
                 _children.clear();
             }
-            void populate(){
-                for(auto& c : nd->children()){
+            void assert_a() const{
+                CPPP_ASSERT(_type == VisualNodeType::A);
+            }
+            const bbe::ASTNode& a() const{
+                return *static_cast<const bbe::ASTNode*>(nd);
+            }
+            bbe::ASTNode& a(){
+                return *static_cast<bbe::ASTNode*>(nd);
+            }
+            const bbe::Function& f() const{
+                return *static_cast<const bbe::Function*>(nd);
+            }
+            bbe::Function& f(){
+                return *static_cast<bbe::Function*>(nd);
+            }
+            void apopulate(){
+                assert_a();
+                for(auto& c : a().children()){
                     _children.emplace_back(c);
                 }
             }
             // for lhs stealing
-            void populate(VisualASTNode&& vn){
+            void apopulate(VisualNode&& vn){
+                assert_a();
                 _children.emplace_back(std::move(vn));
             }
             // for lhs stealing
-            void rerender_except_first(){
-                for(auto& c : nd->children() | std::views::drop(1uz)){
+            void apopulate_butfirst(){
+                assert_a();
+                for(auto& c : a().children() | std::views::drop(1uz)){
                     _children.emplace_back(c);
                 }
             }
-            std::uint32_t priority() const;
-            void rerender_children() override{
-                clear();
-                populate();
+            std::uint32_t apriority() const;
+            void rerender(){
+                if(_type == VisualNodeType::A){
+                    clear();
+                    apopulate();
+                }else{
+                    _children.front().rerender();
+                }
             }
-            bool fast() const override{
-                return nd->type() == bbe::NodeType::NTYPE;
+            bool placeholder() const{
+                return _type == VisualNodeType::A && a().type() == bbe::NodeType::NTYPE;
             }
-            const bbe::ASTNode& node() const{
-                return *nd;
-            }
-            bbe::ASTNode& node(){
-                return *nd;
-            }
-            bbe::NodeType type() const{
-                return nd->type();
-            }
-            std::uint32_t p32() const{
-                return nd->getp32();
-            }
-            void setp32(std::uint32_t prim){
-                nd->setp32(prim);
-            }
-        protected:
-            const_children_t do_children() const override{
-                return std::span{_children};
-            }
-            children_t do_children() override{
-                return std::span{_children};
+            VisualNodeType type() const{
+                return _type;
             }
     };
-    class VisualFunctionNode final : public VisualNode{
-        bbe::Function* fn;
-        VisualASTNode _child;
-        std::uint32_t id;
+    class Breadcrumbs{
+        VisualNode _root;
+        struct PathEntry{
+            VisualNode* p;
+            std::uint32_t index;
+        };
+        // forward_list::clear is very slow
+        std::vector<PathEntry> path;
+        const PathEntry& etop() const{
+            return path.back();
+        }
+        PathEntry& etop(){
+            return path.back();
+        }
+        const VisualNode& top2() const{
+            return path.size()>1?*path[path.size()-2].p:_root;
+        }
+        VisualNode& top2(){
+            return path.size()>1?*path[path.size()-2].p:_root;
+        }
         public:
-            VisualFunctionNode(bbe::Function& f,std::uint32_t id) : fn(&f), _child(f.ast()), id(id){}
-            void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const override;
-            const bbe::Function& func() const{
-                return *fn;
+            Breadcrumbs(VisualNode&& root) : _root(std::move(root)){}
+            VisualNode& root(){
+                return _root;
             }
-            bbe::Function& func(){
-                return *fn;
+            const VisualNode& root() const{
+                return _root;
             }
-            const VisualASTNode& child() const{
-                return _child;
+            void home(){
+                path.clear();
             }
-            bool fast() const{
-                return false;
+            bool has_nesting() const{
+                return !path.empty();
             }
-            void rerender_children() override{
-                _child.rerender_children();
+            const VisualNode& top() const{
+                return has_nesting()?*etop().p:_root;
             }
-        protected:
-            children_t do_children() override{
-                return std::span<VisualASTNode,1uz>{&_child,1uz};
+            VisualNode& top(){
+                return has_nesting()?*etop().p:_root;
             }
-            const_children_t do_children() const override{
-                return std::span<const VisualASTNode,1uz>{&_child,1uz};
+            void leave(){
+                path.pop_back();
+            }
+            void leave_opt(){
+                if(has_nesting()) path.pop_back();
+            }
+            void enter(std::uint32_t index){
+                path.emplace_back(&top().children()[index],index);
+            }
+            bool is_first_child() const{
+                return etop().index == 0;
+            }
+            bool is_last_child() const{
+                return etop().index+1 == top2().children().size();
+            }
+            void prev_sibling(){
+                etop().p = &top2().children()[--etop().index];
+            }
+            void next_sibling(){
+                etop().p = &top2().children()[++etop().index];
+            }
+    };
+    class UICursor{
+        Breadcrumbs crumbs;
+        bool after;
+        public:
+            UICursor(VisualNode&& root) : crumbs(std::move(root)), after(false){}
+            const Breadcrumbs& trail() const{
+                return crumbs;
+            }
+            Breadcrumbs& trail(){
+                return crumbs;
+            }
+            const VisualNode& selected() const{
+                return crumbs.top();
+            }
+            VisualNode& selected(){
+                return crumbs.top();
+            }
+            bool is_after() const{
+                return after;
+            }
+            void set_after(bool new_after){
+                after = new_after;
             }
     };
 }
