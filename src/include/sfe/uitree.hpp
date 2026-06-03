@@ -95,6 +95,7 @@ namespace sfe{
                 return _type;
             }
     };
+    // Owns the root for perf reasons (no need to store an extra pointer)
     class Breadcrumbs{
         VisualNode _root;
         struct PathEntry{
@@ -108,12 +109,6 @@ namespace sfe{
         }
         PathEntry& etop(){
             return path.back();
-        }
-        const VisualNode& top2() const{
-            return path.size()>1?*path[path.size()-2].p:_root;
-        }
-        VisualNode& top2(){
-            return path.size()>1?*path[path.size()-2].p:_root;
         }
         public:
             Breadcrumbs(VisualNode&& root) : _root(std::move(root)){}
@@ -135,6 +130,17 @@ namespace sfe{
             VisualNode& top(){
                 return has_nesting()?*etop().p:_root;
             }
+            std::uint32_t top_index() const{
+                return etop().index;
+            }
+            const VisualNode& below_top() const{
+                CPPP_ASSERT(has_nesting());
+                return path.size()>1?*path[path.size()-2].p:_root;
+            }
+            VisualNode& below_top(){
+                CPPP_ASSERT(has_nesting());
+                return path.size()>1?*path[path.size()-2].p:_root;
+            }
             void leave(){
                 path.pop_back();
             }
@@ -148,13 +154,13 @@ namespace sfe{
                 return etop().index == 0;
             }
             bool is_last_child() const{
-                return etop().index+1 == top2().children().size();
+                return etop().index+1 == below_top().children().size();
             }
             void prev_sibling(){
-                etop().p = &top2().children()[--etop().index];
+                etop().p = &below_top().children()[--etop().index];
             }
             void next_sibling(){
-                etop().p = &top2().children()[++etop().index];
+                etop().p = &below_top().children()[++etop().index];
             }
     };
     class UICursor{

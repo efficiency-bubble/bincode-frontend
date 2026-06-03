@@ -11,7 +11,6 @@
 #include"keys.hpp"
 #include"project.hpp"
 namespace sfe{
-    // Owns the root for perf reasons (no need to store an extra pointer)
     class CodeEntry{
         UICursor cursor;
         void navigate(bool right,bool fast);

@@ -48,13 +48,29 @@ namespace sfe{
                 if(selected().type() == VisualNodeType::A){
                     bbe::ASTNode& an = selected().a();
                     if(an.type() == bbe::NodeType::NTYPE){
-                        if(!cursor.trail().has_nesting()){
-                            break; // can't delete root node
+                        if(cursor.trail().below_top().type() != VisualNodeType::A){
+                            break; // trying to delete an already-blank root node; do nothing
                         }
+                        std::uint32_t ti = cursor.trail().top_index();
                         cursor.trail().leave();
                         cursor.set_after(false);
+                        switch(selected().a().type()){
+                            case bbe::NodeType::COMMA:
+                            case bbe::NodeType::PACK:
+                                throw std::logic_error("Unimplemented: deleting entry in comma or pack");
+                            default:
+                                if(selected().a().children().size() == 2){
+                                    [[assume(ti <= 1)]];
+                                    bbe::ASTNode tmp = std::move(selected().a().children()[1-ti]);
+                                    selected().a() = std::move(tmp);
+                                }else{
+                                    // can't drop down multiple nodes, just delete them
+                                    selected().a() = {bbe::NodeType::NTYPE,0};
+                                }
+                        }
+                    }else{
+                        an = {bbe::NodeType::NTYPE,0};
                     }
-                    an = {bbe::NodeType::NTYPE,0};
                     selected().rerender();
                 }
                 break;
