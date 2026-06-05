@@ -54,19 +54,21 @@ namespace sfe{
                         std::uint32_t ti = cursor.trail().top_index();
                         cursor.trail().leave();
                         cursor.set_after(false);
-                        switch(selected().a().type()){
-                            case bbe::NodeType::COMMA:
-                            case bbe::NodeType::PACK:
-                                throw std::logic_error("Unimplemented: deleting entry in comma or pack");
-                            default:
-                                if(selected().a().children().size() == 2){
-                                    [[assume(ti <= 1)]];
-                                    bbe::ASTNode tmp = std::move(selected().a().children()[1-ti]);
-                                    selected().a() = std::move(tmp);
-                                }else{
+                        if(selected().a().children().size() == 2 && selected().a().type() != bbe::NodeType::PACK){
+                            [[assume(ti <= 1)]];
+                            bbe::ASTNode tmp = std::move(selected().a().children()[1-ti]);
+                            selected().a() = std::move(tmp);
+                        }else{
+                            switch(selected().a().type()){
+                                case bbe::NodeType::COMMA:
+                                case bbe::NodeType::PACK:
+                                    selected().a().children().pop(ti);
+                                    break;
+                                default:
                                     // can't drop down multiple nodes, just delete them
                                     selected().a() = {bbe::NodeType::NTYPE,0};
-                                }
+                                    break;
+                            }
                         }
                     }else{
                         an = {bbe::NodeType::NTYPE,0};

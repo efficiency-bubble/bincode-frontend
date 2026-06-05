@@ -28,7 +28,7 @@ bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,s
                         a.setp32(1-a.getp32());
                     }
                     break;
-                case UINT32: case FNSYM: case PACKIND:
+                case UINT32: case FNSYM: case COMMA: case PACKIND:
                     if(ed.selected_after()){
                         if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                             switch(ke.key()){
@@ -91,6 +91,8 @@ int main(){
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::CALL_BUILTIN,30,2});
     kc.register_key(SDLK_EQUALS,{bbe::NodeType::CALL_BUILTIN,50,2});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{bbe::NodeType::CALL_BUILTIN,0,2});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_COMMA},{bbe::NodeType::CALL_BUILTIN,51,2});
+    kc.register_key(SDLK_COMMA,{bbe::NodeType::COMMA,0,2});
     kc.register_key(SDLK_LEFTBRACKET,{bbe::NodeType::PACKIND,0,1});
     
     kc.register_node(SDLK_A,{bbe::NodeType::ARG,0,0});

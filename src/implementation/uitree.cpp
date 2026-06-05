@@ -121,6 +121,15 @@ namespace sfe{
                         gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
                         cursor_pos = pos;
                         break;
+                    case COMMA:
+                        gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
+                        for(std::uint32_t i=0;i<_children.size();++i){
+                            if(i) gc.draw_text_at_cursor(u8","sv,pos,1.0f,WHITE);
+                            _children[i].draw(gc,errors,names,cursor,pos);
+                        }
+                        gc.draw_text_at_cursor(cppp::format<u8")[{}]"_ts>(a().getp32()),pos,1.0f,WHITE);
+                        cursor_pos = pos;
+                        break;
                     case PACKIND:
                         _children[0uz].draw(gc,errors,names,cursor,pos);
                         gc.draw_text_at_cursor(cppp::format<u8"[{}]"_ts>(a().getp32()),pos,1.0f,WHITE);
