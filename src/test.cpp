@@ -141,7 +141,6 @@ int main(){
                     break;
                 case SDL_EVENT_TEXT_EDITING:
                     ed.preedit_set(static_cast<std::uint32_t>(e.edit.start),static_cast<std::uint32_t>(e.edit.length),e.edit.text);
-                    printf("Insert %s at %d:+%d\n",e.edit.text,e.edit.start,e.edit.length);
                     break;
                 case SDL_EVENT_TEXT_INPUT: {
                     std::size_t len = std::strlen(e.text.text);
