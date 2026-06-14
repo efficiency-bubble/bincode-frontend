@@ -8,12 +8,13 @@
 #include<sgl/sgl.hpp>
 #include<bbe/bbe.hpp>
 #include<filesystem>
+#include<cstring>
 using namespace std::literals;
 using namespace cppp::literals;
 sgl::FreeType ftlib;
 sgl::CachedFont code_font(){
     sgl::CachedFont gc{ftlib.load_font_from_fc(u8"Consolas"s),sgl::SdfMode::DIRECT};
-    gc.font().init_width_pt(19<<6uz,191,191);
+    gc.font().init_width_pt(15<<6uz,191,191);
     return gc;
 }
 bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
@@ -94,6 +95,7 @@ int main(){
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_COMMA},{bbe::NodeType::CALL_BUILTIN,51,2});
     kc.register_key(SDLK_COMMA,{bbe::NodeType::COMMA,0,2});
     kc.register_key(SDLK_LEFTBRACKET,{bbe::NodeType::PACKIND,0,1});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_SLASH},{bbe::NodeType::FORK,0,3});
     
     kc.register_node(SDLK_A,{bbe::NodeType::ARG,0,0});
     kc.register_node(SDLK_E,{bbe::NodeType::BOOL,0,0});
@@ -126,8 +128,8 @@ int main(){
     ed.add_command(u8"reset cursor"s,SDLK_F8,sfe::commands::reset_cursor);
     ed.add_command(u8"exit"s,sfe::commands::quit);
     ed.add_command(u8"debug selection"s,SDLK_F7,sfe::commands::debug_selection);
-    ed.add_command(u8"compile code for x86"s,SDLK_F6,sfe::commands::compile_and_run);
-    ed.add_command(u8"interpret code"s,SDLK_F5,sfe::commands::interpret);
+    ed.add_command(u8"compile code for x86"s,SDLK_F6,{sfe::commands::compile_and_run,&edb});
+    ed.add_command(u8"interpret code"s,SDLK_F5,{sfe::commands::interpret,&edb});
     fn.ast().recursively_recalculate_result_type(proj.entities(),edb,fn.signature());
     while(true){
         for(const auto& e : sgl::events()){
@@ -137,10 +139,15 @@ int main(){
                     glViewport(0,0,e.window.data1,e.window.data2);
                     ed.graphics_context().update_window(static_cast<std::uint32_t>(e.window.data1),static_cast<std::uint32_t>(e.window.data2));
                     break;
-                case SDL_EVENT_TEXT_INPUT:
-                    CPPP_ASSERT(ed.is_command_palette_open());
-                    ed.command_palette().append(e.text.text);
+                case SDL_EVENT_TEXT_EDITING:
+                    ed.preedit_set(static_cast<std::uint32_t>(e.edit.start),static_cast<std::uint32_t>(e.edit.length),e.edit.text);
+                    printf("Insert %s at %d:+%d\n",e.edit.text,e.edit.start,e.edit.length);
                     break;
+                case SDL_EVENT_TEXT_INPUT: {
+                    std::size_t len = std::strlen(e.text.text);
+                    ed.textinput({std::start_lifetime_as_array<char8_t>(e.text.text,len),len});
+                    break;
+                }
                 case SDL_EVENT_KEY_DOWN:
                     sfe::Keypress kp{e.key};
                     if(ed.is_command_palette_open() || !keydown(ed.toast(),ed.code(),kc,kp)){
@@ -158,7 +165,7 @@ int main(){
         }
         if(ed.code().selected().type() == sfe::VisualNodeType::A){
             bbe::ASTNode& an = ed.code().selected().a();
-            constexpr static float DIAG_TEXT_SCALE = 0.4f;
+            constexpr static float DIAG_TEXT_SCALE = 0.65f;
             float winheight_f = static_cast<float>(ed.graphics_context().cmap().win_size().y());
             float y = winheight_f * 0.75f + ed.graphics_context().ascender()*DIAG_TEXT_SCALE;
             for(const auto& em : edb.query(&an)){

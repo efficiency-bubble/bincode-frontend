@@ -6,6 +6,7 @@
 #include<bbe/targets/dfg.hpp>
 #include<bbe/inter/rtl.hpp>
 #include<bbe/inter/dfg.hpp>
+#include<bbe/inter/magic.hpp>
 #include<cppp/format.hpp>
 #include<SDL3/SDL_events.h>
 #include<cppp/bfile.hpp>
@@ -16,17 +17,17 @@
 #include<memory>
 namespace sfe::commands{
     using namespace cppp::literals;
-    void open_command_palette(Window& w){
+    void open_command_palette(Window& w,void*){
         w.open_command_palette();
     }
-    void save(Window& ed){
+    void save(Window& ed,void*){
         cppp::bytes save;
         ed.code().root().f().ast().serialize(save);
         cppp::BinaryFile bf{u8"testprog"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
         bf.write(save);
         ed.toast().reset(cppp::format<u8"Saved {} bytes"_ts>(save.size()),1s);
     }
-    void load(Window& ed){
+    void load(Window& ed,void*){
         cppp::BinaryFile bf{u8"testprog"s,std::ios_base::in|std::ios_base::binary};
         cppp::bytes save;
         std::array<std::byte,1024uz> buf;
@@ -39,11 +40,11 @@ namespace sfe::commands{
         ed.code().root().rerender();
         ed.code().home();
     }
-    void reset_cursor(Window& ed){
+    void reset_cursor(Window& ed,void*){
         ed.code().home();
         ed.code().root().rerender();
     }
-    void quit(Window&){
+    void quit(Window&,void*){
         SDL_Event ev{.quit={
             .type=SDL_EVENT_QUIT,
             .reserved=0,
@@ -51,7 +52,7 @@ namespace sfe::commands{
         }};
         SDL_PushEvent(&ev);
     }
-    void debug_selection(Window& ed){
+    void debug_selection(Window& ed,void*){
         if(ed.code().selected().type() == VisualNodeType::A){
             cppp::print<u8"{:p} = {}"_ts>(static_cast<void*>(&ed.code().selected().a()),std::to_underlying(ed.code().selected().a().type()));
         }
@@ -68,13 +69,14 @@ namespace sfe::commands{
             return std::chrono::duration_cast<µs>(dur);
         }
     }
-    void interpret(Window& ed){
+    void interpret(Window& ed,void* edb){
+        if(!static_cast<bbe::ErrorDatabase*>(edb)->empty()) return;
         try{
             cppp::str rbuf;
             {
                 bbe::inter::dfg::CompiledFunctionPool compiled{ed.project().entities()};
                 µs delta = time_execution([&]{
-                    bbe::inter::stringify(compiled.call(0,{bbe::inter::uint32v{30}}),rbuf);
+                    bbe::inter::stringify(compiled.call(0,bbe::inter::uint32v{30}),rbuf);
                 });
                 std::span<int> a;
                 if(delta.count() < 1000){
@@ -99,7 +101,8 @@ namespace sfe::commands{
             ed.toast().reset(cppp::tou8(std::string_view(e.what())),3s);
         }
     }
-    void compile_and_run(Window& ed){
+    void compile_and_run(Window& ed,void* edb){
+        if(!static_cast<bbe::ErrorDatabase*>(edb)->empty()) return;
         try{
             cppp::str rbuf;
             {

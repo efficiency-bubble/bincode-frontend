@@ -8,11 +8,12 @@ namespace sfe{
     using namespace std::literals;
     class Window;
     class Command{
-        void(*_exec)(Window&);
+        void(*_exec)(Window&,void*);
+        void* payload;
         public:
-            Command(void(*e)(Window&)) : _exec(e){}
+            Command(void(*e)(Window&,void*),void* pl=nullptr) : _exec(e), payload(pl){}
             void exec(Window& ed) const{
-                return _exec(ed);
+                return _exec(ed,payload);
             }
     };
     class CommandSet{

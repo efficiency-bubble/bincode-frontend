@@ -124,10 +124,10 @@ namespace sfe{
                     case COMMA:
                         gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
                         for(std::uint32_t i=0;i<_children.size();++i){
-                            if(i) gc.draw_text_at_cursor(u8","sv,pos,1.0f,WHITE);
+                            if(i) gc.draw_text_at_cursor(u8"; "sv,pos,1.0f,WHITE);
                             _children[i].draw(gc,errors,names,cursor,pos);
                         }
-                        gc.draw_text_at_cursor(cppp::format<u8")[{}]"_ts>(a().getp32()),pos,1.0f,WHITE);
+                        gc.draw_text_at_cursor(cppp::format<u8")"_ts>(),pos,1.0f,WHITE);
                         cursor_pos = pos;
                         break;
                     case PACKIND:
@@ -170,7 +170,7 @@ namespace sfe{
                 float right_x;
                 {
                     cppp::fvec2 line_1{pos};
-                    gc.draw_text_at_cursor(cppp::format<u8"{}:"_ts>(names.display_function_name(f().index())),line_1,1.0f,WHITE);
+                    gc.draw_text_at_cursor(cppp::format<u8"{}({}) -> {}:"_ts>(names.display_function_name(f().index()),names.display_type_name(f().signature().parameter()),names.display_type_name(f().signature().return_type())),line_1,1.0f,WHITE);
                     right_x = line_1.x();
                 }
                 pos += cppp::fvec2(gc.indentation()*4.0f,gc.line_height());

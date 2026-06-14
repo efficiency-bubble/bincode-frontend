@@ -62,6 +62,7 @@ namespace sfe{
                             switch(selected().a().type()){
                                 case bbe::NodeType::COMMA:
                                 case bbe::NodeType::PACK:
+                                    printf("Popping\n");
                                     selected().a().children().pop(ti);
                                     break;
                                 default:

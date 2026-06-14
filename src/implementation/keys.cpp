@@ -15,7 +15,7 @@ namespace sfe{
     }
     static void builtin_n_ary(VisualNode& sel,bbe::NodeType nt,std::uint32_t prim,CodeEntry& ed,std::uint32_t arity){
         sel.assert_a();
-        [[maybe_unused]] bool second = (prim > 1) && (sel.a().type() != bbe::NodeType::NTYPE);
+        bool second = (arity > 1) && (sel.a().type() != bbe::NodeType::NTYPE);
         (void)ed;
         steal_lhs(sel,{nt,prim,arity});
         for(std::uint32_t i=1;i<arity;++i){
