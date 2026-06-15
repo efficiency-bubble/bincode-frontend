@@ -20,6 +20,11 @@ namespace sfe::commands{
     void open_command_palette(Window& w,void*){
         w.open_command_palette();
     }
+    void rename_selection(Window& w,void*){
+        if(w.code().selected().type() == VisualNodeType::F){
+            w.add_textbox({cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::FUNCTION_NAME,&w.project().names().get_function_name(w.code().selected().f().index())});
+        }
+    }
     void save(Window& ed,void*){
         cppp::bytes save;
         ed.code().root().f().ast().serialize(save);

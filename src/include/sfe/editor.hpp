@@ -53,39 +53,52 @@ namespace sfe{
             void keydown(Keypress);
     };
     enum class TextboxTargetType{
-        COMMAND_PALETTE
+        COMMAND_PALETTE, FUNCTION_NAME
     };
     class Textbox{
-        cppp::str buffer;
+        const cppp::str* buffer;
         cppp::uvec3 area;
         float font_size;
         float x_end_buf;
         TextboxTargetType tt;
         void* target;
         public:
-            Textbox(cppp::uvec3 area,float size,TextboxTargetType tt,void* target) : area(area), font_size(size), tt(tt), target(target){}
+            Textbox(cppp::uvec3 area,float size,TextboxTargetType tt,void* target) : area(area), font_size(size), tt(tt), target(target){
+                switch(tt){
+                    case TextboxTargetType::COMMAND_PALETTE:
+                        buffer = &ctarget().buffer;
+                        break;
+                    case TextboxTargetType::FUNCTION_NAME:
+                        buffer = &ntarget();
+                        break;
+                    default: std::unreachable();
+                }
+            }
             cppp::uvec2 position() const{
                 return {area.x(),area.y()};
             }
             const cppp::str& text() const{
-                return buffer;
+                return *buffer;
             }
             void append(cppp::sv more){
-                std::size_t oldsize = buffer.size();
-                buffer.append(more);
                 switch(tt){
                     case TextboxTargetType::COMMAND_PALETTE:
-                        ctarget().update_refine(oldsize,buffer);
+                        ctarget().append(more);
+                        break;
+                    case TextboxTargetType::FUNCTION_NAME:
+                        ntarget().append(more);
                         break;
                     default: std::unreachable();
                 }
             }
             void backspace(){
-                if(buffer.empty()) return;
-                buffer.pop_back();
+                if(buffer->empty()) return;
                 switch(tt){
                     case TextboxTargetType::COMMAND_PALETTE:
-                        ctarget().reset(buffer);
+                        ctarget().backspace();
+                        break;
+                    case TextboxTargetType::FUNCTION_NAME:
+                        ntarget().pop_back();
                         break;
                     default: std::unreachable();
                 }
@@ -101,6 +114,12 @@ namespace sfe{
             }
             CommandPalette& ctarget(){
                 return *static_cast<CommandPalette*>(target);
+            }
+            const cppp::str& ntarget() const{
+                return *static_cast<const cppp::str*>(target);
+            }
+            cppp::str& ntarget(){
+                return *static_cast<cppp::str*>(target);
             }
             void update(sgl::Window& win,const sfe::GraphicsContext& gc) const{
                 SDL_Rect rect{
@@ -122,19 +141,19 @@ namespace sfe{
         HotkeyRecords hr;
         std::optional<CommandPalette> cp;
         Toast _toast;
-        std::stack<Textbox> textboxes;
+        std::vector<Textbox> textboxes;
         cppp::str preedit;
         public:
             Window(Project& proj,sgl::Window&& w,VisualNode&& root,GraphicsContext&& gc) : pr(&proj), w(std::move(w)), ce(std::move(root)), gc(std::move(gc)){}
             void add_textbox(Textbox tb){
                 if(textboxes.empty()) SDL_StartTextInput(w.native_handle());
-                textboxes.emplace(tb);
+                textboxes.emplace_back(tb);
                 tb.update(w,gc);
             }
             void pop_textbox(){
-                textboxes.pop();
+                textboxes.pop_back();
                 if(textboxes.empty()) SDL_StopTextInput(w.native_handle());
-                else textboxes.top().update(w,gc);
+                else textboxes.back().update(w,gc);
             }
             const Project& project() const{
                 return *pr;
@@ -209,16 +228,21 @@ namespace sfe{
             }
             void textinput(cppp::sv s){
                 if(!textboxes.empty()){
-                    textboxes.top().append(s);
+                    textboxes.back().append(s);
                 }
             }
             void keydown(Keypress kp){
                 if(kp.mods() == KeyModifiers::NONE){
                     if(!textboxes.empty() && kp.mods() == KeyModifiers::NONE){
-                        auto& tb = textboxes.top();
+                        auto& tb = textboxes.back();
                         switch(kp.key()){
                             case SDLK_BACKSPACE:
                                 tb.backspace();
+                                return;
+                            case SDLK_ESCAPE:
+                                if(tb.target_type() == TextboxTargetType::COMMAND_PALETTE){
+                                    close_command_palette();
+                                }else pop_textbox();
                                 return;
                         }
                     }
@@ -231,9 +255,6 @@ namespace sfe{
                             }
                             return;
                         }
-                        case SDLK_ESCAPE:
-                            close_command_palette();
-                            return;
                         case SDLK_DOWN:
                             cp->next();
                             return;
@@ -258,11 +279,11 @@ namespace sfe{
                     cppp::fvec3 top_edge = get_overlay_top_edge();
                     cp->render(gc,{top_edge.x(),top_edge.y()},top_edge.z(),COMMAND_PALETTE_FONT_SCALE);
                 }
-                if(!textboxes.empty()){
-                    cppp::fvec2 cursor = textboxes.top().position();
-                    cursor.y() += gc.ascender() * textboxes.top().scale();
-                    gc.draw_text_at_cursor(textboxes.top().text(),cursor,textboxes.top().scale(),WHITE);
-                    gc.draw_text_at_cursor(preedit,cursor,textboxes.top().scale(),WHITE);
+                for(const auto& tb : textboxes){
+                    cppp::fvec2 cursor = tb.position();
+                    cursor.y() += gc.ascender() * tb.scale();
+                    gc.draw_text_at_cursor(tb.text(),cursor,tb.scale(),WHITE);
+                    gc.draw_text_at_cursor(preedit,cursor,tb.scale(),WHITE);
                 }
             }
     };

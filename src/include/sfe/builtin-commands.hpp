@@ -2,6 +2,7 @@
 #include"editor.hpp"
 namespace sfe::commands{
     void open_command_palette(Window&,void*);
+    void rename_selection(Window&,void*);
     void save(Window&,void*);
     void load(Window&,void*);
     void reset_cursor(Window&,void*);

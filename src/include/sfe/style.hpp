@@ -23,6 +23,9 @@ namespace sfe{
             const cppp::str& get_function_name(bbe::func_id fid) const{
                 return fnames.at(fid);
             }
+            cppp::str& get_function_name(bbe::func_id fid){
+                return fnames.at(fid);
+            }
             const cppp::str& get_defined_type_name(bbe::type_id tid) const{
                 return dtnames.at(tid);
             }

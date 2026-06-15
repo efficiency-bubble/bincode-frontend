@@ -123,6 +123,7 @@ int main(){
     if(!SDL_GL_SetSwapInterval(-1)) SDL_GL_SetSwapInterval(1);
     
     ed.add_command(u8"open command palette"s,SDLK_F1,sfe::commands::open_command_palette);
+    ed.add_command(u8"rename selection"s,SDLK_F2,sfe::commands::rename_selection);
     ed.add_command(u8"save"s,{sfe::KeyModifiers::CTRL,SDLK_S},sfe::commands::save);
     ed.add_command(u8"load"s,{sfe::KeyModifiers::CTRL,SDLK_O},sfe::commands::load);
     ed.add_command(u8"reset cursor"s,SDLK_F8,sfe::commands::reset_cursor);

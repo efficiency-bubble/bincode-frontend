@@ -3,6 +3,9 @@
 #include<numeric>
 namespace sfe{
     class CommandPalette{
+        cppp::str buffer;
+        friend class Textbox;
+        
         const CommandSet* commands;
         std::vector<const CommandSet::entry_type*> candidates;
         std::size_t selection;
@@ -25,8 +28,8 @@ namespace sfe{
             CommandPalette(const CommandSet& c) : commands(&c), selection(0uz){
                 populate();
             }
-            void update_refine(std::size_t previous_length,cppp::sv buffer);
-            void reset(cppp::sv buffer);
+            void append(cppp::sv more);
+            void backspace();
             const sfe::Command* selected() const{
                 if(candidates.empty()) return nullptr;
                 return &candidates[selection]->second;

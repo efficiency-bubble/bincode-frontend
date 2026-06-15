@@ -1,7 +1,9 @@
 #include<sfe/command-palette.hpp>
 #include<cppp/assert.hpp>
 namespace sfe{
-    void CommandPalette::update_refine(std::size_t previous_length,cppp::sv buffer){
+    void CommandPalette::append(cppp::sv more){
+        std::size_t previous_length = buffer.size();
+        buffer.append(more);
         if(!candidates.empty()){
             std::vector<const CommandSet::entry_type*> refined_candidates;
             std::size_t current_selection = std::exchange(selection,0uz);
@@ -16,7 +18,8 @@ namespace sfe{
             candidates = std::move(refined_candidates);
         }
     }
-    void CommandPalette::reset(cppp::sv buffer){
+    void CommandPalette::backspace(){
+        buffer.pop_back();
         candidates.clear();
         for(const auto& el : commands->commands()){
             if(has_prefix(el.first,buffer,0uz)){
