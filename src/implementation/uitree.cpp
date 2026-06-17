@@ -5,7 +5,6 @@ namespace sfe{
     using namespace cppp::literals;
     constexpr static cppp::fvec3 RED{1.0f,0.0f,0.0f};
     constexpr static cppp::fvec3 GRAY{0.7f};
-    constexpr static cppp::fvec3 FUNCREF_HIGHLIGHT{0.9882352941176471f,0.8784313725490196f,0.2627450980392157f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_1{0.5f,0.0f,0.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_2{0.8f,1.0f,1.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_WEAK{0.3f,0.7f,0.7f};
@@ -57,10 +56,15 @@ namespace sfe{
                         gc.draw_text_at_cursor(u8"arg"sv,pos,0.75f,WHITE);
                         cursor_pos = pos;
                         break;
-                    case FNSYM:
-                        gc.draw_text_at_cursor(names.display_function_name(a().getp32()),pos,1.0f,FUNCREF_HIGHLIGHT);
+                    case FNSYM: {
+                        if(auto fname = names.optget_function_name(a().getp32())){
+                            gc.draw_text_at_cursor(fname->identifier(),pos,1.0f,fname->color());
+                        }else{
+                            gc.draw_text_at_cursor(cppp::format<u8"[unknown function {}]"_ts>(a().getp32()),pos,1.0f,RED);
+                        }
                         cursor_pos = pos;
                         break;
+                    }
                     case BOOL:
                         gc.draw_text_at_cursor(a().getp32()?u8"true"s:u8"false"s,pos,1.0f,WHITE);
                         cursor_pos = pos;
@@ -170,7 +174,8 @@ namespace sfe{
                 float right_x;
                 {
                     cppp::fvec2 line_1{pos};
-                    gc.draw_text_at_cursor(names.display_function_name(f().index()),line_1,1.0f,FUNCREF_HIGHLIGHT);
+                    const auto& fn = names.get_function_name(f().index());
+                    gc.draw_text_at_cursor(fn.identifier(),line_1,1.0f,fn.color());
                     gc.draw_text_at_cursor(cppp::format<u8"({}) -> {}:"_ts>(names.display_type_name(f().signature().parameter()),names.display_type_name(f().signature().return_type())),line_1,1.0f,WHITE);
                     right_x = line_1.x();
                 }

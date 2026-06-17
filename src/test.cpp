@@ -17,6 +17,18 @@ sgl::CachedFont code_font(){
     gc.font().init_width_pt(15<<6uz,191,191);
     return gc;
 }
+cppp::fvec3 new_chroma(){
+    constexpr static std::array chromas{
+        cppp::fvec3{0.11764705882352941f,0.6470588235294118f,0.8980392156862745f},
+        cppp::fvec3{0.5137254901960784f,0.9019607843137255f,0.11764705882352941f},
+        cppp::fvec3{0.9254901960784314f,0.2901960784313726f,0.7529411764705882f},
+        cppp::fvec3{0.9294117647058824f,0.47843137254901963f,0.2901960784313726f}
+    };
+    static std::size_t i = 0uz;
+    cppp::fvec3 ret = chromas[i++];
+    if(i == chromas.size()) i = 0uz;
+    return ret;
+}
 bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
     if(kc.handle(ed,ke)) return true;
     switch(ed.selected().type()){
@@ -63,7 +75,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                     case SDLK_RETURN: {
                         const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
                         bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{&b_uint32,&b_uint32});
-                        proj.names().name_function(fn.index(),u8"_unnamed"s);
+                        proj.names().name_function(fn.index(),{u8"_unnamed"s,new_chroma()});
                         ed.root().paddf(fn);
                         ed.root().prerender();
                         break;
@@ -96,7 +108,7 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
     }
 }
 int main(){
-    if(std::filesystem::last_write_time(u8"timing_helper.cpp"sv) > std::filesystem::last_write_time(u8"timing_helper.o"sv)){
+    if(!std::filesystem::exists(u8"timing_helper.o"sv) || std::filesystem::last_write_time(u8"timing_helper.cpp"sv) > std::filesystem::last_write_time(u8"timing_helper.o"sv)){
         if(int ret=std::system("g++ -O3 -m64 -std=c++26 -s -c timing_helper.cpp -o timing_helper.o")){
             throw std::runtime_error(std::format("precompiling timing_helper failed with: {}"sv,ret));
         }
@@ -122,7 +134,7 @@ int main(){
     
     const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
     bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{&b_uint32,&b_uint32});
-    proj.names().name_function(fn.index(),u8"testfn"s);
+    proj.names().name_function(fn.index(),{u8"testfn"s,new_chroma()});
     fn.ast() = {bbe::NodeType::NTYPE};
     
     SDL_SetHint(SDL_HINT_INVALID_PARAM_CHECKS,"1");

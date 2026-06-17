@@ -3,13 +3,19 @@
 #include<cppp/binary.hpp>
 #include<span>
 namespace sfe{
-    cppp::str NameDatabase::display_function_name(bbe::func_id id) const{
-        if(auto it=fnames.find(id);it!=fnames.end()){
+    // cppp::str NameDatabase::display_function_name(bbe::func_id id) const{
+    //     if(auto it=fnames.find(id);it!=fnames.end()){
+    //         return it->second.identifier();
+    //     }else{
+    //         using namespace cppp::literals;
+    //         return cppp::format<u8"[unknown function {}]"_ts>(id);
+    //     }
+    // }
+    std::optional<const Name&> NameDatabase::optget_function_name(bbe::func_id fid) const{
+        if(auto it=fnames.find(fid);it!=fnames.end()){
             return it->second;
-        }else{
-            using namespace cppp::literals;
-            return cppp::format<u8"[unknown function {}]"_ts>(id);
         }
+        return std::nullopt;
     }
     cppp::str NameDatabase::display_type_name(const bbe::TypeInfo* ti) const{
         using namespace cppp::literals;
@@ -43,7 +49,7 @@ namespace sfe{
             }
             default:
                 if(auto it=dtnames.find(ti->index());it!=dtnames.end()){
-                    return it->second;
+                    return it->second.identifier();
                 }else{
                     return cppp::format<u8"[unknown type {}]"_ts>(ti->index());
                 }
@@ -54,15 +60,16 @@ namespace sfe{
         while(nentries--){
             bbe::func_id fid = cppp::read<bbe::func_id>(v);
             std::uint64_t ns = cppp::read<std::uint64_t>(v);
-            fnames.try_emplace(fid,cppp::sv{std::start_lifetime_as_array<char8_t>(v.read(ns),ns),ns});
+            // TODO: deserialize colors
+            fnames.try_emplace(fid,cppp::str(std::start_lifetime_as_array<char8_t>(v.read(ns),ns),ns),cppp::fvec3{1.0f});
         }
     }
     void NameDatabase::serialize(cppp::bytes& b) const{
         b.appendl<std::uint64_t>(fnames.size());
         for(const auto& [k,v] : fnames){
             b.appendl<bbe::func_id>(k);
-            b.appendl<std::uint64_t>(v.size());
-            b.append(std::as_bytes(std::span{v}));
+            b.appendl<std::uint64_t>(v.identifier().size());
+            b.append(std::as_bytes(std::span{v.identifier()}));
         }
     }
 }
