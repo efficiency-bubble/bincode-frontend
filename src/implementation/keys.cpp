@@ -3,7 +3,6 @@
 #include<sfe/editor.hpp>
 namespace sfe{
     static void steal_lhs(VisualNode& ui,bbe::ASTNode&& node){
-        ui.assert_a();
         cppp::swap(node,ui.a());
         // node is now old
         VisualNode old_ui{ui.a(),VisualNode::no_populate};
