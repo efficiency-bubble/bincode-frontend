@@ -3,7 +3,7 @@
 namespace sfe{
     void CodeEntry::navigate(bool right,bool fast){
         bool nochildren = cursor.selected().children().empty();
-        if(nochildren && (cursor.selected().placeholder() || fast)){
+        if(nochildren && (cursor.selected().is_placeholder() || fast)){
             cursor.set_after(right);
         }
         if(cursor.is_after() == right){
@@ -74,7 +74,7 @@ namespace sfe{
                     }else{
                         an = {bbe::NodeType::NTYPE,0};
                     }
-                    selected().rerender();
+                    selected().arerender();
                 }
                 break;
         }

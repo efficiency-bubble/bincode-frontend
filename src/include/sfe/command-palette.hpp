@@ -30,7 +30,12 @@ namespace sfe{
             }
             void append(cppp::sv more);
             void backspace();
-            const sfe::Command* selected() const{
+            void reset(){
+                buffer.clear();
+                candidates.clear();
+                populate();
+            }
+            const Command* selected() const{
                 if(candidates.empty()) return nullptr;
                 return &candidates[selection]->second;
             }

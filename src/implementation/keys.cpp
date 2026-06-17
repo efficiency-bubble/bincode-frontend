@@ -10,7 +10,7 @@ namespace sfe{
         cppp::swap(old_ui,ui);
         
         old_ui.repoint(ui.a().children()[0] = std::move(node));
-        old_ui.rerender();
+        old_ui.arerender();
         ui.apopulate(std::move(old_ui));
     }
     static void builtin_n_ary(VisualNode& sel,bbe::NodeType nt,std::uint32_t prim,CodeEntry& ed,std::uint32_t arity){
@@ -33,7 +33,7 @@ namespace sfe{
                     for(std::uint32_t i=0;i<it->second.arity;++i){
                         n.children()[i] = {bbe::NodeType::NTYPE};
                     }
-                    e.selected().rerender();
+                    e.selected().arerender();
                     e.set_select_after(true);
                     return true;
                 }

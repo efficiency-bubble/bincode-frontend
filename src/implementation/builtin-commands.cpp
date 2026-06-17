@@ -22,12 +22,12 @@ namespace sfe::commands{
     }
     void rename_selection(Window& w,void*){
         if(w.code().selected().type() == VisualNodeType::F){
-            w.add_textbox({cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::FUNCTION_NAME,&w.project().names().get_function_name(w.code().selected().f().index())});
+            w.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::FUNCTION_NAME,&w.project().names().get_function_name(w.code().selected().f().index()));
         }
     }
     void save(Window& ed,void*){
         cppp::bytes save;
-        ed.code().root().f().ast().serialize(save);
+        ed.code().root().p().functions()[0].ast().serialize(save);
         cppp::BinaryFile bf{u8"testprog"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
         bf.write(save);
         ed.toast().reset(cppp::format<u8"Saved {} bytes"_ts>(save.size()),1s);
@@ -41,13 +41,13 @@ namespace sfe::commands{
             nread = bf.read(buf);
             save.append(std::span{buf.data(),nread});
         }while(nread);
-        ed.code().root().f().ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
-        ed.code().root().rerender();
+        ed.code().root().p().functions()[0].ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
+        ed.code().root().prerender();
         ed.code().home();
     }
     void reset_cursor(Window& ed,void*){
         ed.code().home();
-        ed.code().root().rerender();
+        ed.code().root().prerender();
     }
     void quit(Window&,void*){
         SDL_Event ev{.quit={
@@ -114,7 +114,7 @@ namespace sfe::commands{
                 bbe::formats::elf::Elf elf;
                 bbe::targets::x86::Program prog;
                 {
-                    bbe::targets::x86::Function fn{ed.code().root().f(),ed.project().entities().types()};
+                    bbe::targets::x86::Function fn{ed.code().root().p().functions()[0],ed.project().entities().types()};
                     cppp::format_to<u8"{} bytes; "_ts>(rbuf,fn.instructions().size());
                     prog.export_function(u8"example"s,std::move(fn));
                 }

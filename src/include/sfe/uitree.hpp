@@ -1,5 +1,6 @@
 #pragma once
 #include<cppp/type-erasure.hpp>
+#include<bbe/project_entity_pool.hpp>
 #include<bbe/function.hpp>
 #include<cppp/swap.hpp>
 #include<bbe/ast.hpp>
@@ -12,7 +13,7 @@
 #include"style.hpp"
 namespace sfe{
     enum class VisualNodeType{
-        A,F
+        A,F,P
     };
     class UICursor;
     class VisualNode{
@@ -33,13 +34,18 @@ namespace sfe{
             VisualNode(bbe::Function& f) : nd(&f), _type(VisualNodeType::F){
                 _children.emplace_back(f.ast());
             }
+            VisualNode(bbe::ProjectEntitiesPool& f) : nd(&f), _type(VisualNodeType::P){
+                for(bbe::Function& fn : f.functions()){
+                    _children.emplace_back(fn);
+                }
+            }
             const std::vector<VisualNode>& children() const{
                 return _children;
             }
             std::vector<VisualNode>& children(){
                 return _children;
             }
-            void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const;
+            void draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const;
             void repoint(bbe::ASTNode& other){
                 nd = &other;
             }
@@ -49,20 +55,37 @@ namespace sfe{
             void assert_a() const{
                 CPPP_ASSERT(_type == VisualNodeType::A);
             }
+            void assert_f() const{
+                CPPP_ASSERT(_type == VisualNodeType::F);
+            }
+            void assert_p() const{
+                CPPP_ASSERT(_type == VisualNodeType::P);
+            }
             const bbe::ASTNode& a() const{
+                assert_a();
                 return *static_cast<const bbe::ASTNode*>(nd);
             }
             bbe::ASTNode& a(){
+                assert_a();
                 return *static_cast<bbe::ASTNode*>(nd);
             }
             const bbe::Function& f() const{
+                assert_f();
                 return *static_cast<const bbe::Function*>(nd);
             }
             bbe::Function& f(){
+                assert_f();
                 return *static_cast<bbe::Function*>(nd);
             }
+            const bbe::ProjectEntitiesPool& p() const{
+                assert_p();
+                return *static_cast<const bbe::ProjectEntitiesPool*>(nd);
+            }
+            bbe::ProjectEntitiesPool& p(){
+                assert_p();
+                return *static_cast<bbe::ProjectEntitiesPool*>(nd);
+            }
             void apopulate(){
-                assert_a();
                 for(auto& c : a().children()){
                     _children.emplace_back(c);
                 }
@@ -74,21 +97,43 @@ namespace sfe{
             }
             // for lhs stealing
             void apopulate_butfirst(){
-                assert_a();
                 for(auto& c : a().children() | std::views::drop(1uz)){
                     _children.emplace_back(c);
                 }
             }
+            void paddf(bbe::Function& fn){
+                assert_p();
+                _children.emplace_back(fn);
+            }
             std::uint32_t apriority() const;
-            void rerender(){
-                if(_type == VisualNodeType::A){
-                    clear();
-                    apopulate();
-                }else{
-                    _children.front().rerender();
+            void arerender(){
+                assert_a();
+                clear();
+                apopulate();
+            }
+            void frerender(){
+                assert_f();
+                _children.front().arerender();
+            }
+            void prerender(){
+                assert_p();
+                for(auto& child : _children) child.frerender();
+            }
+            [[deprecated("have some respect for performance")]] void rerender_generic(){
+                switch(_type){
+                    case VisualNodeType::A:
+                        arerender();
+                        break;
+                    case VisualNodeType::F:
+                        frerender();
+                        break;
+                    case VisualNodeType::P:
+                        prerender();
+                        break;
+                    default: std::unreachable();
                 }
             }
-            bool placeholder() const{
+            bool is_placeholder() const{
                 return _type == VisualNodeType::A && a().type() == bbe::NodeType::NTYPE;
             }
             VisualNodeType type() const{

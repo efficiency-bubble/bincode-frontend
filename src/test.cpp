@@ -17,7 +17,7 @@ sgl::CachedFont code_font(){
     gc.font().init_width_pt(15<<6uz,191,191);
     return gc;
 }
-bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
+bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
     if(kc.handle(ed,ke)) return true;
     switch(ed.selected().type()){
         case sfe::VisualNodeType::A: {
@@ -54,8 +54,25 @@ bool keydown(sfe::Toast& toast,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,s
                     break;
                 default:;
             }
+            break;
         }
-        case sfe::VisualNodeType::F:;
+        case sfe::VisualNodeType::F: break;
+        case sfe::VisualNodeType::P: {
+            if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
+                switch(ke.key()){
+                    case SDLK_RETURN: {
+                        const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
+                        bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{&b_uint32,&b_uint32});
+                        proj.names().name_function(fn.index(),u8"_unnamed"s);
+                        ed.root().paddf(fn);
+                        ed.root().prerender();
+                        break;
+                    }
+                }
+            }
+            break;
+        }
+        default: std::unreachable();
     }
     return false;
 }
@@ -108,13 +125,12 @@ int main(){
     proj.names().name_function(fn.index(),u8"testfn"s);
     fn.ast() = {bbe::NodeType::NTYPE};
     
-    
     SDL_SetHint(SDL_HINT_INVALID_PARAM_CHECKS,"1");
     SDL_SetAppMetadata("edBCC (SGL)",nullptr,"edbcc.cpp");
     SDL_InitSubSystem(SDL_INIT_VIDEO);
 
-    sfe::Window ed{proj,{u8"edBCC (SGL)"s,1200,600},fn,{code_font(),{1200,600},1.0f}};
     { // scope for all GL objects. Their dtors must run before we destroy everything with SDL_Quit().
+    sfe::Window ed{proj,{u8"edBCC (SGL)"s,1200,600},proj.entities(),{code_font(),{1200,600},1.0f}};
     glClearColor(0.0f,0.0f,0.0f,1.0f);
     glEnable(GL_CULL_FACE);
     glLineWidth(3.0f);
@@ -150,11 +166,13 @@ int main(){
                 }
                 case SDL_EVENT_KEY_DOWN:
                     sfe::Keypress kp{e.key};
-                    if(ed.is_command_palette_open() || !keydown(ed.toast(),ed.code(),kc,kp)){
+                    if(ed.is_command_palette_open() || !keydown(ed.toast(),proj,ed.code(),kc,kp)){
                         ed.keydown(kp);
                     }
                     edb.clear();
-                    fn.ast().recursively_recalculate_result_type(proj.entities(),edb,fn.signature());
+                    for(auto& f: proj.entities().functions()){
+                        f.ast().recursively_recalculate_result_type(proj.entities(),edb,f.signature());
+                    }
                     break;
             }
         }

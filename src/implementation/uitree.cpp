@@ -5,10 +5,11 @@ namespace sfe{
     using namespace cppp::literals;
     constexpr static cppp::fvec3 RED{1.0f,0.0f,0.0f};
     constexpr static cppp::fvec3 GRAY{0.7f};
+    constexpr static cppp::fvec3 FUNCREF_HIGHLIGHT{0.9882352941176471f,0.8784313725490196f,0.2627450980392157f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_1{0.5f,0.0f,0.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_2{0.8f,1.0f,1.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_WEAK{0.3f,0.7f,0.7f};
-    static void draw_operand(const VisualNode& operand,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,std::uint32_t my_priority){
+    static void draw_operand(const VisualNode& operand,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,std::uint32_t my_priority){
         bool parenthesize = operand.apriority() < my_priority;
         if(parenthesize){
             gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
@@ -18,9 +19,9 @@ namespace sfe{
             gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
         }
     }
-    static void draw_binop(std::u8string_view op,const std::vector<VisualNode>& children,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,std::uint32_t my_priority){
+    static void draw_binop(std::u8string_view op,const std::vector<VisualNode>& children,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,std::uint32_t my_priority){
         draw_operand(children[0uz],gc,errors,names,cursor,pos,my_priority);
-        gc.draw_text_at_cursor(op,pos,1.0f,WHITE);
+        gc.draw_text_at_cursor(op,pos,1.0f,RED);
         draw_operand(children[1uz],gc,errors,names,cursor,pos,my_priority);
     }
     std::uint32_t VisualNode::apriority() const{
@@ -44,12 +45,12 @@ namespace sfe{
         }
         return 1984;
     }
-    void VisualNode::draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const sfe::NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const{
+    void VisualNode::draw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const{
+        bool selected = (&cursor.selected() == this);
         switch(type()){
             case VisualNodeType::A: {
                 cppp::fvec2 start_pos = pos;
                 cppp::fvec2 cursor_pos;
-                bool selected = (&cursor.trail().top() == this);
                 switch(a().type()){
                     using enum bbe::NodeType;
                     case ARG:
@@ -57,7 +58,7 @@ namespace sfe{
                         cursor_pos = pos;
                         break;
                     case FNSYM:
-                        gc.draw_text_at_cursor(names.display_function_name(a().getp32()),pos,1.0f,WHITE);
+                        gc.draw_text_at_cursor(names.display_function_name(a().getp32()),pos,1.0f,FUNCREF_HIGHLIGHT);
                         cursor_pos = pos;
                         break;
                     case BOOL:
@@ -137,17 +138,16 @@ namespace sfe{
                         break;
                     case FORK:
                         _children[0uz].draw(gc,errors,names,cursor,pos);
-                        gc.draw_text_at_cursor(u8"?"sv,pos,1.0f,WHITE);
+                        gc.draw_text_at_cursor(u8"?"sv,pos,1.0f,RED);
                         _children[1uz].draw(gc,errors,names,cursor,pos);
-                        gc.draw_text_at_cursor(u8":"sv,pos,1.0f,WHITE);
+                        gc.draw_text_at_cursor(u8":"sv,pos,1.0f,RED);
                         _children[2uz].draw(gc,errors,names,cursor,pos);
                         cursor_pos = pos;
                         break;
                     case NTYPE:
                         gc.draw_text_at_cursor(u8"_"sv,pos,1.0f,selected?RED:WHITE);
                         goto anodrawsel;
-                    default:
-                        std::unreachable();
+                    default: std::unreachable();
                 }
                 if(selected){
                     if(cursor.is_after()){
@@ -170,20 +170,37 @@ namespace sfe{
                 float right_x;
                 {
                     cppp::fvec2 line_1{pos};
-                    gc.draw_text_at_cursor(cppp::format<u8"{}({}) -> {}:"_ts>(names.display_function_name(f().index()),names.display_type_name(f().signature().parameter()),names.display_type_name(f().signature().return_type())),line_1,1.0f,WHITE);
+                    gc.draw_text_at_cursor(names.display_function_name(f().index()),line_1,1.0f,FUNCREF_HIGHLIGHT);
+                    gc.draw_text_at_cursor(cppp::format<u8"({}) -> {}:"_ts>(names.display_type_name(f().signature().parameter()),names.display_type_name(f().signature().return_type())),line_1,1.0f,WHITE);
                     right_x = line_1.x();
                 }
                 pos += cppp::fvec2(gc.indentation()*4.0f,gc.line_height());
                 _children.front().draw(gc,errors,names,cursor,pos);
                 
-                if(&cursor.trail().top() == this){
-                    float bottom_y = pos.y()-gc.descender();
-                    
+                if(selected){
+                    float bottom_y = pos.y() - gc.descender();
                     float x = cursor.is_after()?std::max(right_x,pos.x()):left_x;
                     gc.line({x,top_y},CURSOR_ACCENT_1,{x,bottom_y},CURSOR_ACCENT_2);
                 }
                 break;
             }
+            case VisualNodeType::P: {
+                float left_x = pos.x();
+                for(const auto& ch : _children){
+                    ch.draw(gc,errors,names,cursor,pos);
+                    pos.x() = left_x;
+                    pos.y() += gc.line_height();
+                }
+                if(selected){
+                    cppp::fvec2 botright = gc.cmap().win_size()-cppp::uvec2{10,10};
+                    gc.line({10.0f,10.0f},CURSOR_ACCENT_1,{botright.x(),10.0f},CURSOR_ACCENT_2);
+                    gc.line({botright.x(),10.0f},CURSOR_ACCENT_2,botright,CURSOR_ACCENT_1);
+                    gc.line({10.0f,10.0f},CURSOR_ACCENT_1,{10.0f,botright.y()},CURSOR_ACCENT_2);
+                    gc.line({10.0f,botright.y()},CURSOR_ACCENT_2,botright,CURSOR_ACCENT_1);
+                }
+                break;
+            }
+            default: std::unreachable();
         }
     }
 }
