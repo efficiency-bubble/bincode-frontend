@@ -70,9 +70,20 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
         }
         case sfe::VisualNodeType::F: {
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
-                if(ke.key() == SDLK_RETURN){
-                    if(bbe::type_id tid=ed.selected().f().ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
-                        ed.selected().f().signature().set_return(&proj.entities().types()[tid]);
+                switch(ke.key()){
+                    case SDLK_BACKSPACE: {
+                        bbe::Function& f = ed.selected().f();
+                        proj.entities().functions().erase(f.index());
+                        ed.leave();
+                        ed.selected().perasef(f);
+                        ed.selected().prerender();
+                        break;
+                    }
+                    case SDLK_RETURN: {
+                        if(bbe::type_id tid=ed.selected().f().ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
+                            ed.selected().f().signature().set_return(&proj.entities().types()[tid]);
+                        }
+                        break;
                     }
                 }
             }

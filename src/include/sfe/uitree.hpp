@@ -105,6 +105,15 @@ namespace sfe{
                 assert_p();
                 _children.emplace_back(fn);
             }
+            void perasef(const bbe::Function& fn){
+                assert_p();
+                #if __cpp_lib_parallel_algorithm >= 202506L
+                #warning GCC updated! change this to use std::ranges::find_if
+                #endif
+                _children.erase(std::find_if(std::execution::unseq,_children.begin(),_children.end(),[p=&fn](const VisualNode& vn){
+                    return &vn.f() == p;
+                }));
+            }
             std::uint32_t apriority() const;
             void arerender(){
                 assert_a();
@@ -118,20 +127,6 @@ namespace sfe{
             void prerender(){
                 assert_p();
                 for(auto& child : _children) child.frerender();
-            }
-            [[deprecated("have some respect for performance")]] void rerender_generic(){
-                switch(_type){
-                    case VisualNodeType::A:
-                        arerender();
-                        break;
-                    case VisualNodeType::F:
-                        frerender();
-                        break;
-                    case VisualNodeType::P:
-                        prerender();
-                        break;
-                    default: std::unreachable();
-                }
             }
             bool is_placeholder() const{
                 return _type == VisualNodeType::A && a().type() == bbe::NodeType::NTYPE;
