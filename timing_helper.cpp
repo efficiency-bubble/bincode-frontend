@@ -3,7 +3,7 @@
 #include<string>
 #include<chrono>
 extern "C"{
-    std::uint32_t example(std::uint32_t);
+    std::uint32_t fn_0(std::uint32_t);
 }
 using hrc = std::chrono::high_resolution_clock;
 using namespace std::literals;
@@ -13,7 +13,7 @@ int main(int argc,char* argv[]){
     std::uint32_t num = static_cast<std::uint32_t>(std::strtoul(argv[1],nullptr,10));
     if(errno == ERANGE) return 2;
     hrc::time_point bgn = hrc::now();
-    std::uint32_t result = example(num);
+    std::uint32_t result = fn_0(num);
     hrc::time_point end = hrc::now();
     µs delta = std::chrono::duration_cast<µs>(end-bgn);
     std::print("{} in "sv,result);

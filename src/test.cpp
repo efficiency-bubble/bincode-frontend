@@ -68,7 +68,16 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             }
             break;
         }
-        case sfe::VisualNodeType::F: break;
+        case sfe::VisualNodeType::F: {
+            if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
+                if(ke.key() == SDLK_RETURN){
+                    if(bbe::type_id tid=ed.selected().f().ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
+                        ed.selected().f().signature().set_return(&proj.entities().types()[tid]);
+                    }
+                }
+            }
+            break;
+        }
         case sfe::VisualNodeType::P: {
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                 switch(ke.key()){

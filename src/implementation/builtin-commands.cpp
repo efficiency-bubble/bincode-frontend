@@ -114,9 +114,13 @@ namespace sfe::commands{
                 bbe::formats::elf::Elf elf;
                 bbe::targets::x86::Program prog;
                 {
-                    bbe::targets::x86::Function fn{ed.code().root().p().functions()[0],ed.project().entities().types()};
-                    cppp::format_to<u8"{} bytes; "_ts>(rbuf,fn.instructions().size());
-                    prog.export_function(u8"example"s,std::move(fn));
+                    std::size_t cumsize = 0uz;
+                    for(const auto& fn : ed.code().root().p().functions()){
+                        bbe::targets::x86::Function compiled{fn,ed.project().entities().types()};
+                        cumsize = compiled.instructions().size();
+                        prog.export_function(cppp::format<u8"fn_{}"_ts>(fn.index()),fn.index(),std::move(compiled));
+                    }
+                    cppp::format_to<u8"{} bytes; "_ts>(rbuf,cumsize);
                 }
                 elf.add_text(prog);
                 cppp::BinaryFile outf{u8"testprog_c.o"s,std::ios_base::out|std::ios_base::binary|std::ios_base::trunc};
