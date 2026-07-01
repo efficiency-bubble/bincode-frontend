@@ -132,7 +132,7 @@ namespace sfe{
                             if(i) gc.draw_text_at_cursor(u8"; "sv,pos,1.0f,WHITE);
                             _children[i].draw(gc,errors,names,cursor,pos);
                         }
-                        gc.draw_text_at_cursor(cppp::format<u8")"_ts>(),pos,1.0f,WHITE);
+                        gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
                         cursor_pos = pos;
                         break;
                     case PACKIND:

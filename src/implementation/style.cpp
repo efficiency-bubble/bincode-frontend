@@ -1,6 +1,8 @@
 #include<sfe/style.hpp>
 #include<cppp/format.hpp>
 #include<cppp/binary.hpp>
+// TODO: move common serialization logic to cppp
+#include<bbe/serialization.hpp>
 #include<span>
 namespace sfe{
     // cppp::str NameDatabase::display_function_name(bbe::func_id id) const{
@@ -55,21 +57,37 @@ namespace sfe{
                 }
         }
     }
+    static void serialize_color(cppp::bytes& dst,cppp::fvec3 color){
+        dst.append(static_cast<std::uint8_t>(color.x()*255.0f));
+        dst.append(static_cast<std::uint8_t>(color.y()*255.0f));
+        dst.append(static_cast<std::uint8_t>(color.z()*255.0f));
+    }
+    static cppp::fvec3 deserialize_color(cppp::frozen_byte_view& fbv){
+        float r = static_cast<float>(fbv.pop_front())/255.0f;
+        float g = static_cast<float>(fbv.pop_front())/255.0f;
+        float b = static_cast<float>(fbv.pop_front())/255.0f;
+        return {r,g,b};
+    }
     NameDatabase::NameDatabase(cppp::frozen_byte_view& v){
-        std::uint64_t nentries = cppp::read<std::uint64_t>(v);
+        // see TODO above
+        namespace bi = bbe::impl;
+        std::uint64_t nentries = bi::uleb128_r<std::uint64_t>(v);
         while(nentries--){
-            bbe::func_id fid = cppp::read<bbe::func_id>(v);
-            std::uint64_t ns = cppp::read<std::uint64_t>(v);
-            // TODO: deserialize colors
-            fnames.try_emplace(fid,cppp::str(std::start_lifetime_as_array<char8_t>(v.read(ns),ns),ns),cppp::fvec3{1.0f});
+            bbe::func_id fid = bi::uleb128_r<bbe::func_id>(v);
+            std::uint64_t ns = bi::uleb128_r<std::uint64_t>(v);
+            const char8_t* namebuf = std::start_lifetime_as_array<char8_t>(v.read(ns),ns);
+            fnames.try_emplace(fid,cppp::str(namebuf,ns),deserialize_color(v));
         }
     }
-    void NameDatabase::serialize(cppp::bytes& b) const{
-        b.appendl<std::uint64_t>(fnames.size());
+    void NameDatabase::serialize(cppp::bytes& b,const bbe::SCM& scm) const{
+        // see TODO above
+        namespace bi = bbe::impl;
+        bi::uleb128_w<std::uint64_t>(b,fnames.size());
         for(const auto& [k,v] : fnames){
-            b.appendl<bbe::func_id>(k);
-            b.appendl<std::uint64_t>(v.identifier().size());
+            bi::uleb128_w<bbe::func_id>(b,scm.fcmap.at(k));
+            bi::uleb128_w<std::uint64_t>(b,v.identifier().size());
             b.append(std::as_bytes(std::span{v.identifier()}));
+            serialize_color(b,v.color());
         }
     }
 }

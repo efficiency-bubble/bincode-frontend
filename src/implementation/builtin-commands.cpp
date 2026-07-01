@@ -7,6 +7,7 @@
 #include<bbe/inter/rtl.hpp>
 #include<bbe/inter/dfg.hpp>
 #include<bbe/inter/magic.hpp>
+#include<bbe/project_entity_pool.hpp>
 #include<cppp/format.hpp>
 #include<SDL3/SDL_events.h>
 #include<cppp/bfile.hpp>
@@ -27,7 +28,8 @@ namespace sfe::commands{
     }
     void save(Window& ed,void*){
         cppp::bytes save;
-        ed.code().root().p().functions()[0].ast().serialize(save);
+        bbe::SCM scm{ed.project().entities().serialize(save)};
+        ed.project().names().serialize(save,scm);
         cppp::BinaryFile bf{u8"testprog"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
         bf.write(save);
         ed.toast().reset(cppp::format<u8"Saved {} bytes"_ts>(save.size()),1s);
@@ -41,8 +43,10 @@ namespace sfe::commands{
             nread = bf.read(buf);
             save.append(std::span{buf.data(),nread});
         }while(nread);
-        ed.code().root().p().functions()[0].ast() = bbe::ASTNode(cppp::rtl<cppp::frozen_byte_view>(save));
-        ed.code().root().prerender();
+        cppp::frozen_byte_view scanner{save};
+        ed.project().entities() = {scanner};
+        ed.project().names() = {scanner};
+        ed.code().root().prepopulate();
         ed.code().home();
     }
     void reset_cursor(Window& ed,void*){

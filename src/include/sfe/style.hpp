@@ -3,7 +3,7 @@
 #include<cppp/vector.hpp>
 #include<cppp/object-view.hpp>
 #include<cppp/bytearray.hpp>
-#include<bbe/function.hpp>
+#include<bbe/project_entity_pool.hpp>
 #include<unordered_map>
 #include<optional>
 #include<cstdint>
@@ -29,7 +29,7 @@ namespace sfe{
         name_map_t<bbe::func_id> fnames;
         name_map_t<bbe::type_id> dtnames;
         public:
-            NameDatabase(){}
+            NameDatabase() = default;
             NameDatabase(cppp::frozen_byte_view&);
             void name_function(bbe::func_id fid,Name n){
                 fnames.try_emplace(fid,std::move(n));
@@ -48,6 +48,6 @@ namespace sfe{
                 return dtnames.at(tid);
             }
             cppp::str display_type_name(const bbe::TypeInfo* ti) const;
-            void serialize(cppp::bytes&) const;
+            void serialize(cppp::bytes&,const bbe::SCM&) const;
     };
 }

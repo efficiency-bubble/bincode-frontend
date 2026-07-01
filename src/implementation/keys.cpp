@@ -15,11 +15,7 @@ namespace sfe{
     static void builtin_n_ary(VisualNode& sel,bbe::NodeType nt,std::uint32_t prim,CodeEntry& ed,std::uint32_t arity){
         sel.assert_a();
         bool second = (arity > 1) && (sel.a().type() != bbe::NodeType::NTYPE);
-        (void)ed;
-        steal_lhs(sel,{nt,prim,arity});
-        for(std::uint32_t i=1;i<arity;++i){
-            sel.a().children()[i] = {bbe::NodeType::NTYPE};
-        }
+        steal_lhs(sel,{nt,prim,arity,bbe::null_initialize});
         sel.apopulate_butfirst();
         ed.enter(second,false);
     }
@@ -28,10 +24,7 @@ namespace sfe{
             bbe::ASTNode& n = e.selected().a();
             if(n.type() == bbe::NodeType::NTYPE){
                 if(auto it=replace.find(k);it!=replace.end()){
-                    n = {it->second.nt,it->second.prim,it->second.arity};
-                    for(std::uint32_t i=0;i<it->second.arity;++i){
-                        n.children()[i] = {bbe::NodeType::NTYPE};
-                    }
+                    n = {it->second.nt,it->second.prim,it->second.arity,bbe::null_initialize};
                     e.selected().arerender();
                     e.set_select_after(true);
                     return true;

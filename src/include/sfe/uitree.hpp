@@ -124,6 +124,13 @@ namespace sfe{
                 assert_f();
                 _children.front().arerender();
             }
+            void prepopulate(){
+                assert_p();
+                _children.clear();
+                for(auto& fn : p().functions()){
+                    _children.emplace_back(fn);
+                }
+            }
             void prerender(){
                 assert_p();
                 for(auto& child : _children) child.frerender();
