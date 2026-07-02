@@ -14,41 +14,24 @@
 #include"project.hpp"
 namespace sfe{
     class CodeEntry{
-        UICursor cursor;
+        UICursor _cursor;
         void navigate(bool right,bool fast);
         public:
-            CodeEntry(VisualNode&& root) : cursor(std::move(root)){}
+            CodeEntry(VisualNode&& root) : _cursor(std::move(root)){}
             const VisualNode& root() const{
-                return cursor.trail().root();
+                return _cursor.root();
             }
             VisualNode& root(){
-                return cursor.trail().root();
+                return _cursor.root();
             }
             void render_full(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,cppp::fvec2& pos) const{
-                root().pdraw(gc,errors,names,cursor,pos);
+                root().pdraw(gc,errors,names,_cursor,pos);
             }
-            void leave(){
-                cursor.trail().leave();
+            const UICursor& cursor() const{
+                return _cursor;
             }
-            void home(){
-                cursor.trail().home();
-                set_select_after(false);
-            }
-            void enter(std::uint32_t c,bool from_right){
-                cursor.trail().enter(c);
-                cursor.set_after(from_right);
-            }
-            const VisualNode& selected() const{
-                return cursor.selected();
-            }
-            VisualNode& selected(){
-                return cursor.selected();
-            }
-            void set_select_after(bool after){
-                cursor.set_after(after);
-            }
-            bool selected_after() const{
-                return cursor.is_after();
+            UICursor& cursor(){
+                return _cursor;
             }
             void keydown(Keypress);
     };

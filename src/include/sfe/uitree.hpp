@@ -45,9 +45,9 @@ namespace sfe{
             std::vector<VisualNode>& children(){
                 return _children;
             }
-            void adraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const;
-            void fdraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const;
-            void pdraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const;
+            void adraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,float indentation) const;
+            void fdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos) const;
+            void pdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos) const;
             void repoint(bbe::ASTNode& other){
                 nd = &other;
             }
@@ -217,17 +217,54 @@ namespace sfe{
         bool after;
         public:
             UICursor(VisualNode&& root) : crumbs(std::move(root)), after(false){}
-            const Breadcrumbs& trail() const{
-                return crumbs;
+            const VisualNode& root() const{
+                return crumbs.root();
             }
-            Breadcrumbs& trail(){
-                return crumbs;
+            VisualNode& root(){
+                return crumbs.root();
+            }
+            void home(){
+                crumbs.home();
+            }
+            void enter(std::uint32_t c){
+                crumbs.enter(c);
+            }
+            void enter(std::uint32_t c,bool from_right){
+                enter(c);
+                after = from_right;
+            }
+            void leave(){
+                crumbs.leave();
+            }
+            std::uint32_t index_of_selection() const{
+                return crumbs.top_index();
             }
             const VisualNode& selected() const{
                 return crumbs.top();
             }
             VisualNode& selected(){
                 return crumbs.top();
+            }
+            bool is_nested() const{
+                return crumbs.has_nesting();
+            }
+            bool is_first_child() const{
+                return crumbs.is_first_child();
+            }
+            bool is_last_child() const{
+                return crumbs.is_last_child();
+            }
+            void next_sibling(){
+                crumbs.next_sibling();
+            }
+            void prev_sibling(){
+                crumbs.prev_sibling();
+            }
+            const VisualNode& selected2() const{
+                return crumbs.below_top();
+            }
+            VisualNode& selected2(){
+                return crumbs.below_top();
             }
             bool is_after() const{
                 return after;

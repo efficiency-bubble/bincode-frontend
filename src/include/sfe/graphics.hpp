@@ -48,8 +48,8 @@ namespace sfe{
             float descender() const{
                 return scale*cf.font().descender_px();
             }
-            float indentation() const{
-                return scale*static_cast<float>(cf.query(cf.font().char_to_glyph_id(u8'0')).advance())/64.0f;
+            float charadvance(char8_t forchar=u8'0') const{
+                return scale*static_cast<float>(cf.query(cf.font().char_to_glyph_id(forchar)).advance())/64.0f;
             }
             float line_height() const{
                 return scale*cf.font().line_height_px();

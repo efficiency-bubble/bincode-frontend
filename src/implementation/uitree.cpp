@@ -8,20 +8,20 @@ namespace sfe{
     constexpr static cppp::fvec3 CURSOR_ACCENT_1{0.5f,0.0f,0.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_2{0.8f,1.0f,1.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_WEAK{0.3f,0.7f,0.7f};
-    static void draw_operand(const VisualNode& operand,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,std::uint32_t my_priority){
+    static void draw_operand(const VisualNode& operand,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float indentation,std::uint32_t my_priority){
         bool parenthesize = operand.apriority() < my_priority;
         if(parenthesize){
             gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
         }
-        operand.adraw(gc,errors,names,cursor,pos);
+        operand.adraw(gc,errors,names,cursor,pos,indentation);
         if(parenthesize){
             gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
         }
     }
-    static void draw_binop(std::u8string_view op,const std::vector<VisualNode>& children,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,std::uint32_t my_priority){
-        draw_operand(children[0uz],gc,errors,names,cursor,pos,my_priority);
+    static void draw_binop(std::u8string_view op,const std::vector<VisualNode>& children,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float indentation,std::uint32_t my_priority){
+        draw_operand(children[0uz],gc,errors,names,cursor,pos,indentation,my_priority);
         gc.draw_text_at_cursor(op,pos,1.0f,RED);
-        draw_operand(children[1uz],gc,errors,names,cursor,pos,my_priority);
+        draw_operand(children[1uz],gc,errors,names,cursor,pos,indentation,my_priority);
     }
     std::uint32_t VisualNode::apriority() const{
         assert_a();
@@ -44,7 +44,7 @@ namespace sfe{
         }
         return 1984;
     }
-    void VisualNode::adraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos) const{
+    void VisualNode::adraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float indentation) const{
         assert_a();
         cppp::fvec2 start_pos = pos;
         cppp::fvec2 cursor_pos;
@@ -76,40 +76,40 @@ namespace sfe{
             case CALL_BUILTIN:
                 switch(a().getp32()){
                     case 0:
-                        _children[0uz].adraw(gc,errors,names,cursor,pos);
+                        _children[0uz].adraw(gc,errors,names,cursor,pos,indentation);
                         gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
-                        _children[1uz].adraw(gc,errors,names,cursor,pos);
+                        _children[1uz].adraw(gc,errors,names,cursor,pos,indentation);
                         gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
                         break;
                     case 10:
-                        draw_binop(u8"+"sv,_children,gc,errors,names,cursor,pos,apriority());
+                        draw_binop(u8"+"sv,_children,gc,errors,names,cursor,pos,indentation,apriority());
                         break;
                     case 20:
-                        draw_binop(u8"-"sv,_children,gc,errors,names,cursor,pos,apriority());
+                        draw_binop(u8"-"sv,_children,gc,errors,names,cursor,pos,indentation,apriority());
                         break;
                     case 30:
-                        draw_binop(u8"*"sv,_children,gc,errors,names,cursor,pos,apriority());
+                        draw_binop(u8"*"sv,_children,gc,errors,names,cursor,pos,indentation,apriority());
                         break;
                     case 25:
                         gc.draw_text_at_cursor(u8"print("sv,pos,1.0f,WHITE);
-                        _children.front().adraw(gc,errors,names,cursor,pos);
+                        _children.front().adraw(gc,errors,names,cursor,pos,indentation);
                         gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
                         break;
                     case 50:
-                        draw_binop(u8"="sv,_children,gc,errors,names,cursor,pos,apriority());
+                        draw_binop(u8"="sv,_children,gc,errors,names,cursor,pos,indentation,apriority());
                         break;
                     case 51:
-                        draw_binop(u8"<="sv,_children,gc,errors,names,cursor,pos,apriority());
+                        draw_binop(u8"<="sv,_children,gc,errors,names,cursor,pos,indentation,apriority());
                         break;
                     case 60:
                         gc.draw_text_at_cursor(u8"!"s,pos,1.0f,WHITE);
-                        draw_operand(_children.front(),gc,errors,names,cursor,pos,apriority());
+                        draw_operand(_children.front(),gc,errors,names,cursor,pos,indentation,apriority());
                         break;
                     default:
                         gc.draw_text_at_cursor(cppp::format<u8"BUILTIN[{}]("_ts>(a().getp32()),pos,1.0f,WHITE);
                         for(std::uint32_t i=0;i<_children.size();++i){
                             if(i) gc.draw_text_at_cursor(u8","sv,pos,1.0f,WHITE);
-                            _children[i].adraw(gc,errors,names,cursor,pos);
+                            _children[i].adraw(gc,errors,names,cursor,pos,indentation);
                         }
                         gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
                         break;
@@ -120,31 +120,37 @@ namespace sfe{
                 gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
                 for(std::uint32_t i=0;i<_children.size();++i){
                     if(i) gc.draw_text_at_cursor(u8","sv,pos,1.0f,WHITE);
-                    _children[i].adraw(gc,errors,names,cursor,pos);
+                    _children[i].adraw(gc,errors,names,cursor,pos,indentation);
                 }
                 gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
-            case COMMA:
-                gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
+            case COMMA: {
+                gc.draw_text_at_cursor(u8"{"sv,pos,1.0f,WHITE);
+                float inner_indentation = indentation + 4 * gc.charadvance();
                 for(std::uint32_t i=0;i<_children.size();++i){
-                    if(i) gc.draw_text_at_cursor(u8"; "sv,pos,1.0f,WHITE);
-                    _children[i].adraw(gc,errors,names,cursor,pos);
+                    pos.x() = inner_indentation;
+                    pos.y() += gc.line_height();
+                    _children[i].adraw(gc,errors,names,cursor,pos,inner_indentation);
+                    gc.draw_text_at_cursor(u8";"sv,pos,1.0f,WHITE);
                 }
-                gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
+                pos.x() = indentation;
+                pos.y() += gc.line_height();
+                gc.draw_text_at_cursor(u8"}"sv,pos,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
+            }
             case PACKIND:
-                _children[0uz].adraw(gc,errors,names,cursor,pos);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,indentation);
                 gc.draw_text_at_cursor(cppp::format<u8"[{}]"_ts>(a().getp32()),pos,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
             case FORK:
-                _children[0uz].adraw(gc,errors,names,cursor,pos);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,indentation);
                 gc.draw_text_at_cursor(u8"?"sv,pos,1.0f,RED);
-                _children[1uz].adraw(gc,errors,names,cursor,pos);
+                _children[1uz].adraw(gc,errors,names,cursor,pos,indentation);
                 gc.draw_text_at_cursor(u8":"sv,pos,1.0f,RED);
-                _children[2uz].adraw(gc,errors,names,cursor,pos);
+                _children[2uz].adraw(gc,errors,names,cursor,pos,indentation);
                 cursor_pos = pos;
                 break;
             case NTYPE:
@@ -178,8 +184,8 @@ namespace sfe{
             gc.draw_text_at_cursor(cppp::format<u8"({}) -> {}:"_ts>(names.display_type_name(f().signature().parameter()),names.display_type_name(f().signature().return_type())),line_1,1.0f,WHITE);
             right_x = line_1.x();
         }
-        pos += cppp::fvec2(gc.indentation()*4.0f,gc.line_height());
-        _children.front().adraw(gc,errors,names,cursor,pos);
+        pos += cppp::fvec2(gc.charadvance()*4.0f,gc.line_height());
+        _children.front().adraw(gc,errors,names,cursor,pos,pos.x());
         
         if(&cursor.selected() == this){
             float bottom_y = pos.y() - gc.descender();

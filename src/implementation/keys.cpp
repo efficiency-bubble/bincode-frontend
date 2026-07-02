@@ -17,21 +17,21 @@ namespace sfe{
         bool second = (arity > 1) && (sel.a().type() != bbe::NodeType::NTYPE);
         steal_lhs(sel,{nt,prim,arity,bbe::null_initialize});
         sel.apopulate_butfirst();
-        ed.enter(second,false);
+        ed.cursor().enter(second,false);
     }
     bool NodeKeyConfig::handle(CodeEntry& e,Keypress k) const{
-        if(e.selected().type() == VisualNodeType::A){
-            bbe::ASTNode& n = e.selected().a();
+        if(e.cursor().selected().type() == VisualNodeType::A){
+            bbe::ASTNode& n = e.cursor().selected().a();
             if(n.type() == bbe::NodeType::NTYPE){
                 if(auto it=replace.find(k);it!=replace.end()){
                     n = {it->second.nt,it->second.prim,it->second.arity,bbe::null_initialize};
-                    e.selected().arerender();
-                    e.set_select_after(true);
+                    e.cursor().selected().arerender();
+                    e.cursor().set_after(true);
                     return true;
                 }
             }
             if(auto it=suffix.find(k);it!=suffix.end()){
-                builtin_n_ary(e.selected(),it->second.nt,it->second.prim,e,it->second.arity);
+                builtin_n_ary(e.cursor().selected(),it->second.nt,it->second.prim,e,it->second.arity);
                 return true;
             }
         }

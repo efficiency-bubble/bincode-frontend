@@ -31,18 +31,19 @@ cppp::fvec3 new_chroma(){
 }
 bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
     if(kc.handle(ed,ke)) return true;
-    switch(ed.selected().type()){
+    switch(ed.cursor().selected().type()){
         case sfe::VisualNodeType::A: {
-            bbe::ASTNode& a = ed.selected().a();
+            bbe::ASTNode& a = ed.cursor().selected().a();
             switch(a.type()){
                 using enum bbe::NodeType;
                 case BOOL:
                     if(ke.key() == SDLK_RETURN){
                         a.setp32(1-a.getp32());
+                        return true;
                     }
                     break;
                 case UINT32: case FNSYM: case COMMA: case PACKIND:
-                    if(ed.selected_after()){
+                    if(ed.cursor().is_after()){
                         if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                             switch(ke.key()){
                                 case SDLK_BACKSPACE:
@@ -66,22 +67,32 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                     break;
                 default:;
             }
+            if(ed.cursor().selected2().type() == sfe::VisualNodeType::A && ed.cursor().selected2().a().type() == bbe::NodeType::COMMA){
+                if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))&&ke.key()==SDLK_RETURN){
+                    ed.cursor().selected2().a().children().emplace(bbe::NodeType::NTYPE);
+                    std::uint32_t indx = ed.cursor().index_of_selection();
+                    bool aft = ed.cursor().is_after();
+                    ed.cursor().leave();
+                    ed.cursor().selected().arerender();
+                    ed.cursor().enter(indx,aft);
+                }
+            }
             break;
         }
         case sfe::VisualNodeType::F: {
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                 switch(ke.key()){
                     case SDLK_BACKSPACE: {
-                        bbe::Function& f = ed.selected().f();
+                        bbe::Function& f = ed.cursor().selected().f();
                         proj.entities().functions().erase(f.index());
-                        ed.leave();
-                        ed.selected().perasef(f);
-                        ed.selected().prerender();
+                        ed.cursor().leave();
+                        ed.cursor().selected().perasef(f);
+                        ed.cursor().selected().prerender();
                         break;
                     }
                     case SDLK_RETURN: {
-                        if(bbe::type_id tid=ed.selected().f().ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
-                            ed.selected().f().signature().set_return(&proj.entities().types()[tid]);
+                        if(bbe::type_id tid=ed.cursor().selected().f().ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
+                            ed.cursor().selected().f().signature().set_return(&proj.entities().types()[tid]);
                         }
                         break;
                     }
@@ -213,8 +224,8 @@ int main(){
         if(ed.toast().alive()){
             ed.graphics_context().draw_text(ed.toast().message(),{10.0f,10.0f+ed.graphics_context().ascender()*0.6f},0.6f,{1.0f,0.0f,0.0f});
         }
-        if(ed.code().selected().type() == sfe::VisualNodeType::A){
-            bbe::ASTNode& an = ed.code().selected().a();
+        if(ed.code().cursor().selected().type() == sfe::VisualNodeType::A){
+            bbe::ASTNode& an = ed.code().cursor().selected().a();
             constexpr static float DIAG_TEXT_SCALE = 0.65f;
             float winheight_f = static_cast<float>(ed.graphics_context().cmap().win_size().y());
             float y = winheight_f * 0.75f + ed.graphics_context().ascender()*DIAG_TEXT_SCALE;

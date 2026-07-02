@@ -2,32 +2,32 @@
 #include<cppp/format.hpp>
 namespace sfe{
     void CodeEntry::navigate(bool right,bool fast){
-        bool nochildren = cursor.selected().children().empty();
-        if(nochildren && (cursor.selected().is_placeholder() || fast)){
-            cursor.set_after(right);
+        bool nochildren = _cursor.selected().children().empty();
+        if(nochildren && (_cursor.selected().is_placeholder() || fast)){
+            _cursor.set_after(right);
         }
-        if(cursor.is_after() == right){
-            if(cursor.trail().has_nesting()){
-                if((right && cursor.trail().is_last_child()) || (!right && cursor.trail().is_first_child())){
-                    cursor.trail().leave();
-                    cursor.set_after(right);
+        if(_cursor.is_after() == right){
+            if(_cursor.is_nested()){
+                if((right && _cursor.is_last_child()) || (!right && _cursor.is_first_child())){
+                    _cursor.leave();
+                    _cursor.set_after(right);
                 }else{
                     if(right){
-                        cursor.trail().next_sibling();
-                        cursor.set_after(false);
+                        _cursor.next_sibling();
+                        _cursor.set_after(false);
                     }else{
-                        cursor.trail().prev_sibling();
-                        cursor.set_after(true);
+                        _cursor.prev_sibling();
+                        _cursor.set_after(true);
                     }
                 }
             }else{
                 // wrap around whole project
-                cursor.set_after(!right);
+                _cursor.set_after(!right);
             } 
         }else if(!nochildren){
-            cursor.trail().enter(right?0:static_cast<std::uint32_t>(cursor.selected().children().size()-1));
+            _cursor.enter(right?0:static_cast<std::uint32_t>(_cursor.selected().children().size()-1));
         }else{
-            cursor.set_after(right);
+            _cursor.set_after(right);
         }
     }
     void CodeEntry::keydown(Keypress kp){
@@ -42,38 +42,38 @@ namespace sfe{
                 navigate(!(kp.mods()&KeyModifiers::SHIFT),false);
                 break;
             case SDLK_ESCAPE:
-                cursor.trail().home();
+                _cursor.home();
                 break;
             case SDLK_BACKSPACE:
-                if(selected().type() == VisualNodeType::A){
-                    bbe::ASTNode& an = selected().a();
+                if(_cursor.selected().type() == VisualNodeType::A){
+                    bbe::ASTNode& an = _cursor.selected().a();
                     if(an.type() == bbe::NodeType::NTYPE){
-                        if(cursor.trail().below_top().type() != VisualNodeType::A){
+                        if(_cursor.selected2().type() != VisualNodeType::A){
                             break; // trying to delete an already-blank root node; do nothing
                         }
-                        std::uint32_t ti = cursor.trail().top_index();
-                        cursor.trail().leave();
-                        cursor.set_after(false);
-                        if(selected().a().children().size() == 2 && selected().a().type() != bbe::NodeType::PACK){
+                        std::uint32_t ti = _cursor.index_of_selection();
+                        _cursor.leave();
+                        _cursor.set_after(false);
+                        if(_cursor.selected().a().children().size() == 2 && _cursor.selected().a().type() != bbe::NodeType::PACK){
                             [[assume(ti <= 1)]];
-                            bbe::ASTNode tmp = std::move(selected().a().children()[1-ti]);
-                            selected().a() = std::move(tmp);
+                            bbe::ASTNode tmp = std::move(_cursor.selected().a().children()[1-ti]);
+                            _cursor.selected().a() = std::move(tmp);
                         }else{
-                            switch(selected().a().type()){
+                            switch(_cursor.selected().a().type()){
                                 case bbe::NodeType::COMMA:
                                 case bbe::NodeType::PACK:
-                                    selected().a().children().pop(ti);
+                                    _cursor.selected().a().children().pop(ti);
                                     break;
                                 default:
                                     // can't drop down multiple nodes, just delete them
-                                    selected().a() = {bbe::NodeType::NTYPE,0};
+                                    _cursor.selected().a() = {bbe::NodeType::NTYPE,0};
                                     break;
                             }
                         }
                     }else{
                         an = {bbe::NodeType::NTYPE,0};
                     }
-                    selected().arerender();
+                    _cursor.selected().arerender();
                 }
                 break;
         }

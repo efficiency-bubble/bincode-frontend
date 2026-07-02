@@ -22,8 +22,8 @@ namespace sfe::commands{
         w.open_command_palette();
     }
     void rename_selection(Window& w,void*){
-        if(w.code().selected().type() == VisualNodeType::F){
-            w.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::FUNCTION_NAME,&w.project().names().get_function_name(w.code().selected().f().index()));
+        if(w.code().cursor().selected().type() == VisualNodeType::F){
+            w.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::FUNCTION_NAME,&w.project().names().get_function_name(w.code().cursor().selected().f().index()));
         }
     }
     void save(Window& ed,void*){
@@ -47,10 +47,10 @@ namespace sfe::commands{
         ed.project().entities() = {scanner};
         ed.project().names() = {scanner};
         ed.code().root().prepopulate();
-        ed.code().home();
+        ed.code().cursor().home();
     }
     void reset_cursor(Window& ed,void*){
-        ed.code().home();
+        ed.code().cursor().home();
         ed.code().root().prerender();
     }
     void quit(Window&,void*){
@@ -62,8 +62,8 @@ namespace sfe::commands{
         SDL_PushEvent(&ev);
     }
     void debug_selection(Window& ed,void*){
-        if(ed.code().selected().type() == VisualNodeType::A){
-            cppp::print<u8"{:p} = {}"_ts>(static_cast<void*>(&ed.code().selected().a()),std::to_underlying(ed.code().selected().a().type()));
+        if(ed.code().cursor().selected().type() == VisualNodeType::A){
+            cppp::print<u8"{:p} = {}"_ts>(static_cast<void*>(&ed.code().cursor().selected().a()),std::to_underlying(ed.code().cursor().selected().a().type()));
         }
         std::println();
     }
