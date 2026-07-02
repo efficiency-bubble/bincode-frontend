@@ -25,7 +25,7 @@ namespace sfe{
                 return cursor.trail().root();
             }
             void render_full(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,cppp::fvec2& pos) const{
-                root().draw(gc,errors,names,cursor,pos);
+                root().pdraw(gc,errors,names,cursor,pos);
             }
             void leave(){
                 cursor.trail().leave();
