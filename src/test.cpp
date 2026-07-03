@@ -183,6 +183,7 @@ int main(){
     
     ed.add_command(u8"open command palette"s,SDLK_F1,sfe::commands::open_command_palette);
     ed.add_command(u8"rename selection"s,SDLK_F2,sfe::commands::rename_selection);
+    ed.add_command(u8"recolor"s,SDLK_F3,sfe::commands::recolor_selection);
     ed.add_command(u8"save"s,{sfe::KeyModifiers::CTRL,SDLK_S},sfe::commands::save);
     ed.add_command(u8"load"s,{sfe::KeyModifiers::CTRL,SDLK_O},sfe::commands::load);
     ed.add_command(u8"reset cursor"s,SDLK_F8,sfe::commands::reset_cursor);
@@ -209,7 +210,7 @@ int main(){
                 }
                 case SDL_EVENT_KEY_DOWN:
                     sfe::Keypress kp{e.key};
-                    if(ed.is_command_palette_open() || !keydown(ed.toast(),proj,ed.code(),kc,kp)){
+                    if(ed.is_command_palette_open() || ed.color_picker().is_open() || !keydown(ed.toast(),proj,ed.code(),kc,kp)){
                         ed.keydown(kp);
                     }
                     edb.clear();
@@ -218,6 +219,16 @@ int main(){
                     }
                     break;
             }
+        }
+        if(ed.color_picker().is_open()){
+            const bool* keys = SDL_GetKeyboardState(nullptr);
+            cppp::fvec3 hsv = ed.color_picker().get_hsv();
+            hsv.x() += (keys[SDL_SCANCODE_LSHIFT]-keys[SDL_SCANCODE_LCTRL]) * 0.02f;
+            if(hsv.x() < 0.0f) hsv.x() += 6.0f;
+            else if(hsv.x() >= 6.0f) hsv.x() -= 6.0f;
+            hsv.y() = std::clamp(hsv.y() + (keys[SDL_SCANCODE_D]-keys[SDL_SCANCODE_A]) * 0.01f,0.0f,1.0f);
+            hsv.z() = std::clamp(hsv.z() + (keys[SDL_SCANCODE_W]-keys[SDL_SCANCODE_S]) * 0.01f,0.0f,1.0f);
+            ed.color_picker().set_hsv(hsv);
         }
         glClear(GL_COLOR_BUFFER_BIT);
         ed.render(edb,proj.names());

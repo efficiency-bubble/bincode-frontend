@@ -10,6 +10,7 @@
 #include"uitree.hpp"
 #include"toast.hpp"
 #include"command-palette.hpp"
+#include"color-picker.hpp"
 #include"keys.hpp"
 #include"project.hpp"
 namespace sfe{
@@ -136,6 +137,7 @@ namespace sfe{
         GraphicsContext gc;
         CommandSet cs;
         HotkeyRecords hr;
+        ColorPicker pk;
         CommandPalette cp;
         Toast _toast;
         Textbox textbox;
@@ -200,6 +202,12 @@ namespace sfe{
                     preedit.push_back(static_cast<char8_t>(c));
                 }
             }
+            const ColorPicker& color_picker() const{
+                return pk;
+            }
+            ColorPicker& color_picker(){
+                return pk;
+            }
             bool is_command_palette_open() const{
                 return textbox && textbox.target_type() == TextboxTargetType::COMMAND_PALETTE;
             }
@@ -256,6 +264,9 @@ namespace sfe{
                         case SDLK_UP:
                             cp.prev();
                             return;
+                    }else if(pk.is_open()){
+                        if(kp.key() == SDLK_ESCAPE) pk.close();
+                        return;
                     }
                 }
                 if(!hr.handle(*this,kp)){
@@ -270,6 +281,9 @@ namespace sfe{
                 return {half_winw*0.4f,10.0f,half_winw*1.2f};
             }
             void render_overlay() const{
+                if(pk.is_open()){
+                    pk.render(gc,{static_cast<float>(gc.cmap().win_size().x())-245.0f,10.0f});
+                }
                 if(is_command_palette_open()){
                     cppp::fvec3 top_edge = get_overlay_top_edge();
                     cp.render(gc,{top_edge.x(),top_edge.y()},top_edge.z(),COMMAND_PALETTE_FONT_SCALE);

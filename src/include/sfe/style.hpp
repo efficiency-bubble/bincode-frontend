@@ -22,6 +22,9 @@ namespace sfe{
             cppp::fvec3 color() const{
                 return chroma;
             }
+            cppp::fvec3& color(){
+                return chroma;
+            }
     };
     class NameDatabase{
         template<typename Kt>
@@ -40,10 +43,10 @@ namespace sfe{
             const Name& get_function_name(bbe::func_id fid) const{
                 return fnames.at(fid);
             }
-            std::optional<const Name&> optget_function_name(bbe::func_id fid) const;
             Name& get_function_name(bbe::func_id fid){
                 return fnames.at(fid);
             }
+            std::optional<const Name&> optget_function_name(bbe::func_id fid) const;
             const Name& get_defined_type_name(bbe::type_id tid) const{
                 return dtnames.at(tid);
             }

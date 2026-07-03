@@ -1,11 +1,13 @@
 #pragma once
 #include<sgl/ext/freetype.hpp>
 #include<sgl/draw/line.hpp>
+#include"color-picker-drawer.hpp"
 namespace sfe{
     constexpr inline cppp::fvec3 DIM_ORANGE{0.5529f,0.4353f,0.0627f};
     constexpr inline cppp::fvec3 WHITE{1.0f};
     constexpr inline cppp::fvec3 BLACK{0.0f};
     class GraphicsContext{
+        SVPickerSquareDrawer rb;
         sgl::LineDrawer ld;
         sgl::SDFTextRenderer tr;
         sgl::CachedFont cf;
@@ -18,6 +20,9 @@ namespace sfe{
             }
             void draw_text_at_cursor(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec3 color) const{
                 tr.draw_text(text,pos,scale*sca,color,cf,cm);
+            }
+            void rainbow(cppp::fvec2 start,cppp::fvec2 dims,cppp::fvec3 hsv) const{
+                rb.rainbow(cm,start,dims,hsv);
             }
             void draw_text(cppp::sv text,cppp::fvec2 pos,float sca,cppp::fvec3 color) const{
                 draw_text_at_cursor(text,pos,sca,color);

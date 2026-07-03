@@ -18,12 +18,17 @@
 #include<memory>
 namespace sfe::commands{
     using namespace cppp::literals;
-    void open_command_palette(Window& w,void*){
-        w.open_command_palette();
+    void open_command_palette(Window& ed,void*){
+        ed.open_command_palette();
     }
-    void rename_selection(Window& w,void*){
-        if(w.code().cursor().selected().type() == VisualNodeType::F){
-            w.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::FUNCTION_NAME,&w.project().names().get_function_name(w.code().cursor().selected().f().index()));
+    void rename_selection(Window& ed,void*){
+        if(ed.code().cursor().selected().type() == VisualNodeType::F){
+            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::FUNCTION_NAME,&ed.project().names().get_function_name(ed.code().cursor().selected().f().index()));
+        }
+    }
+    void recolor_selection(Window& ed,void*){
+        if(ed.code().cursor().selected().type() == VisualNodeType::F){
+            ed.color_picker().open(ed.project().names().get_function_name(ed.code().cursor().selected().f().index()).color());
         }
     }
     void save(Window& ed,void*){
@@ -35,6 +40,8 @@ namespace sfe::commands{
         ed.toast().reset(cppp::format<u8"Saved {} bytes"_ts>(save.size()),1s);
     }
     void load(Window& ed,void*){
+        ed.color_picker().close();
+        ed.remove_textbox();
         cppp::BinaryFile bf{u8"testprog"s,std::ios_base::in|std::ios_base::binary};
         cppp::bytes save;
         std::array<std::byte,1024uz> buf;
