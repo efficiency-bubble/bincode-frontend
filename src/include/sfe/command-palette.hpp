@@ -15,7 +15,7 @@ namespace sfe{
             }
         }
         static char8_t casefold(char8_t c){
-            return static_cast<char8_t>(std::char_traits<char>::to_char_type(tolower(std::char_traits<char>::to_int_type(static_cast<char>(c)))));
+            return static_cast<char8_t>(tolower(static_cast<int>(c)));
         }
         static bool has_prefix(cppp::sv s,cppp::sv prefix,std::size_t known){
             if(prefix.size() > s.size()) return false;
