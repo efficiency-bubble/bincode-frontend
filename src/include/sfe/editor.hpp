@@ -54,7 +54,6 @@ namespace sfe{
                 case TextboxTargetType::FUNCTION_NAME:
                     buffer = &ntarget();
                     break;
-                default: std::unreachable();
             }
         }
         public:
@@ -86,7 +85,6 @@ namespace sfe{
                     case TextboxTargetType::FUNCTION_NAME:
                         ntarget().append(more);
                         break;
-                    default: std::unreachable();
                 }
             }
             void backspace(){
@@ -98,7 +96,6 @@ namespace sfe{
                     case TextboxTargetType::FUNCTION_NAME:
                         ntarget().pop_back();
                         break;
-                    default: std::unreachable();
                 }
             }
             float scale() const{

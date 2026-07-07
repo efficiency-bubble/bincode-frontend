@@ -73,6 +73,11 @@ namespace sfe{
                 cursor_pos = pos;
                 gc.draw_text_at_cursor(u8"dw"sv,pos,0.5f,GRAY);
                 break;
+            case SINT32:
+                gc.draw_text_at_cursor(cppp::format<u8"{}"_ts>(std::bit_cast<std::int32_t>(a().getp32())),pos,1.0f,WHITE);
+                cursor_pos = pos;
+                gc.draw_text_at_cursor(u8"sdw"sv,pos,0.5f,GRAY);
+                break;
             case CALL_BUILTIN:
                 switch(a().getp32()){
                     case 0:
@@ -156,7 +161,13 @@ namespace sfe{
             case NTYPE:
                 gc.draw_text_at_cursor(u8"_"sv,pos,1.0f,selected?RED:WHITE);
                 goto anodrawsel;
-            default: std::unreachable();
+            case SETVAR:
+            case GETVAR:
+            case UINT32SYM:
+            case UINT64:
+                // TODO
+                gc.draw_text_at_cursor(cppp::format<u8"**unimplemented: {}**"_ts>(std::to_underlying(a().type())),pos,1.0f,selected?RED:WHITE);
+                break;
         }
         if(selected){
             if(cursor.is_after()){

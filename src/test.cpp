@@ -115,7 +115,6 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             }
             break;
         }
-        default: std::unreachable();
     }
     return false;
 }
@@ -160,6 +159,7 @@ int main(){
     kc.register_node(SDLK_A,{bbe::NodeType::ARG,0,0});
     kc.register_node(SDLK_E,{bbe::NodeType::BOOL,0,0});
     kc.register_node(SDLK_D,{bbe::NodeType::UINT32,0,0});
+    kc.register_node(SDLK_S,{bbe::NodeType::SINT32,0,0});
     kc.register_node(SDLK_F,{bbe::NodeType::FNSYM,0,0});
     kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::PACK,0,1});
     
