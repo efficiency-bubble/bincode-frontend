@@ -210,7 +210,7 @@ int main(){
                 }
                 case SDL_EVENT_KEY_DOWN:
                     sfe::Keypress kp{e.key};
-                    if(ed.is_command_palette_open() || ed.color_picker().is_open() || !keydown(ed.toast(),proj,ed.code(),kc,kp)){
+                    if(ed.is_textbox_open() || ed.color_picker().is_open() || !keydown(ed.toast(),proj,ed.code(),kc,kp)){
                         ed.keydown(kp);
                     }
                     edb.clear();

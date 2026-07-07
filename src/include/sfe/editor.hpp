@@ -208,6 +208,9 @@ namespace sfe{
             ColorPicker& color_picker(){
                 return pk;
             }
+            bool is_textbox_open() const{
+                return static_cast<bool>(textbox);
+            }
             bool is_command_palette_open() const{
                 return textbox && textbox.target_type() == TextboxTargetType::COMMAND_PALETTE;
             }
@@ -241,29 +244,30 @@ namespace sfe{
                         switch(kp.key()){
                             case SDLK_BACKSPACE:
                                 textbox.backspace();
-                                return;
+                                break;
                             case SDLK_ESCAPE:
                                 if(textbox.target_type() == TextboxTargetType::COMMAND_PALETTE){
                                     close_command_palette();
                                 }else remove_textbox();
+                                break;
+                        }
+                        if(is_command_palette_open()) switch(kp.key()){
+                            case SDLK_RETURN: {
+                                auto cmd = cp.selected();
+                                close_command_palette();
+                                if(cmd){
+                                    cmd->exec(*this);
+                                }
+                                return;
+                            }
+                            case SDLK_DOWN:
+                                cp.next();
+                                return;
+                            case SDLK_UP:
+                                cp.prev();
                                 return;
                         }
-                    }
-                    if(is_command_palette_open()) switch(kp.key()){
-                        case SDLK_RETURN: {
-                            auto cmd = cp.selected();
-                            close_command_palette();
-                            if(cmd){
-                                cmd->exec(*this);
-                            }
-                            return;
-                        }
-                        case SDLK_DOWN:
-                            cp.next();
-                            return;
-                        case SDLK_UP:
-                            cp.prev();
-                            return;
+                        return;
                     }else if(pk.is_open()){
                         if(kp.key() == SDLK_ESCAPE) pk.close();
                         return;

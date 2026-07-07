@@ -2,9 +2,7 @@
 #include<cppp/static-functor.hpp>
 #include<bbe/targets/x86.hpp>
 #include<bbe/formats/elf.hpp>
-#include<bbe/targets/rtl.hpp>
 #include<bbe/targets/dfg.hpp>
-#include<bbe/inter/rtl.hpp>
 #include<bbe/inter/dfg.hpp>
 #include<bbe/inter/magic.hpp>
 #include<bbe/project_entity_pool.hpp>
@@ -28,6 +26,7 @@ namespace sfe::commands{
     }
     void recolor_selection(Window& ed,void*){
         if(ed.code().cursor().selected().type() == VisualNodeType::F){
+            ed.remove_textbox();
             ed.color_picker().open(ed.project().names().get_function_name(ed.code().cursor().selected().f().index()).color());
         }
     }
