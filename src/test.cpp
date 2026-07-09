@@ -53,14 +53,16 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                                     }
                                     break;
                                 case SDLK_0: case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
-                                case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9:
-                                    if((static_cast<std::uint64_t>(a.getp32())*10+static_cast<std::uint64_t>(ke.key()-SDLK_0))>std::numeric_limits<std::uint32_t>::max()){
+                                case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9: {
+                                    std::uint64_t new_num = static_cast<std::uint64_t>(a.getp32())*10+static_cast<std::uint64_t>(ke.key()-SDLK_0);
+                                    if(std::in_range<std::uint32_t>(new_num)){
+                                        a.setp32(static_cast<std::uint32_t>(new_num));
+                                    }else{
                                         using namespace std::chrono_literals;
                                         toast.reset(u8"Overflow!"s,810ms);
-                                    }else{
-                                        a.setp32(a.getp32()*10 + static_cast<std::uint32_t>(ke.key()-SDLK_0));
                                     }
                                     return true;
+                                }
                             }
                         }
                     }
@@ -220,8 +222,8 @@ int main(){
                     break;
             }
         }
+        const bool* keys = SDL_GetKeyboardState(nullptr);
         if(ed.color_picker().is_open()){
-            const bool* keys = SDL_GetKeyboardState(nullptr);
             cppp::fvec3 hsv = ed.color_picker().get_hsv();
             hsv.x() += (keys[SDL_SCANCODE_LSHIFT]-keys[SDL_SCANCODE_LCTRL]) * 0.02f;
             if(hsv.x() < 0.0f) hsv.x() += 6.0f;
@@ -231,7 +233,7 @@ int main(){
             ed.color_picker().set_hsv(hsv);
         }
         glClear(GL_COLOR_BUFFER_BIT);
-        ed.render(edb,proj.names());
+        ed.render(edb,proj.names(),keys[SDL_SCANCODE_LALT]);
         if(ed.toast().alive()){
             ed.graphics_context().draw_text(ed.toast().message(),{10.0f,10.0f+ed.graphics_context().ascender()*0.6f},0.6f,{1.0f,0.0f,0.0f});
         }

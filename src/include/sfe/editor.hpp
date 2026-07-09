@@ -25,8 +25,8 @@ namespace sfe{
             VisualNode& root(){
                 return _cursor.root();
             }
-            void render_full(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,cppp::fvec2& pos) const{
-                root().pdraw(gc,errors,names,_cursor,pos);
+            void render_full(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,cppp::fvec2& pos,bool altmode) const{
+                root().pdraw(gc,errors,names,_cursor,pos,altmode);
             }
             const UICursor& cursor() const{
                 return _cursor;
@@ -274,8 +274,8 @@ namespace sfe{
                     ce.keydown(kp);
                 }
             }
-            void render(const bbe::ErrorDatabase& edb,const NameDatabase& ndb) const{
-                ce.render_full(gc,edb,ndb,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}));
+            void render(const bbe::ErrorDatabase& edb,const NameDatabase& ndb,bool altmode) const{
+                ce.render_full(gc,edb,ndb,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}),altmode);
             }
             cppp::fvec3 get_overlay_top_edge() const{
                 float half_winw = static_cast<float>(gc.cmap().win_size().x())/2.0f;
