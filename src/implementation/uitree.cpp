@@ -161,8 +161,19 @@ namespace sfe{
             case NTYPE:
                 gc.draw_text_at_cursor(u8"_"sv,pos,1.0f,selected?RED:WHITE);
                 goto anodrawsel;
-            case SETVAR:
+            case HAVEVAR:
+                gc.draw_text_at_cursor(cppp::format<u8"let var#{}"_ts>(a().getp32()),pos,1.0f,WHITE);
+                gc.draw_text_at_cursor(u8" = "sv,pos,1.0f,RED);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
+                gc.draw_text_at_cursor(u8" in "sv,pos,1.0f,WHITE);
+                _children[1uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
+                cursor_pos = pos;
+                break;
             case GETVAR:
+                gc.draw_text_at_cursor(cppp::format<u8"var#{}"_ts>(a().getp32()),pos,1.0f,WHITE);
+                cursor_pos = pos;
+                break;
+            case SETVAR:
             case UINT32SYM:
             case UINT64:
                 // TODO

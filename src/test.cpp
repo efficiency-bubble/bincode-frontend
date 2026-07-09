@@ -42,7 +42,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                         return true;
                     }
                     break;
-                case UINT32: case FNSYM: case COMMA: case PACKIND:
+                case UINT32: case FNSYM: case COMMA: case PACKIND: case GETVAR: case HAVEVAR:
                     if(ed.cursor().is_after()){
                         if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                             switch(ke.key()){
@@ -163,6 +163,8 @@ int main(){
     kc.register_node(SDLK_D,{bbe::NodeType::UINT32,0,0});
     kc.register_node(SDLK_S,{bbe::NodeType::SINT32,0,0});
     kc.register_node(SDLK_F,{bbe::NodeType::FNSYM,0,0});
+    kc.register_node(SDLK_V,{bbe::NodeType::GETVAR,0,0});
+    kc.register_node(SDLK_L,{bbe::NodeType::HAVEVAR,0,2});
     kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::PACK,0,1});
     
     const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
@@ -189,6 +191,7 @@ int main(){
     ed.add_command(u8"save"s,{sfe::KeyModifiers::CTRL,SDLK_S},sfe::commands::save);
     ed.add_command(u8"load"s,{sfe::KeyModifiers::CTRL,SDLK_O},sfe::commands::load);
     ed.add_command(u8"reset cursor"s,SDLK_F8,sfe::commands::reset_cursor);
+    ed.add_command(u8"inline function"s,sfe::commands::inline_function);
     ed.add_command(u8"exit"s,sfe::commands::quit);
     ed.add_command(u8"debug selection"s,SDLK_F7,sfe::commands::debug_selection);
     ed.add_command(u8"compile code for x86"s,SDLK_F6,{sfe::commands::compile_and_run,&edb});

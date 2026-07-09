@@ -59,6 +59,22 @@ namespace sfe::commands{
         ed.code().cursor().home();
         ed.code().root().prerender();
     }
+    void inline_transform_initialize(bbe::ASTNode& dst,const bbe::ASTNode& src){
+        if(src.type() == bbe::NodeType::ARG){
+            dst.initialize(bbe::NodeType::GETVAR,0);
+        }else{
+            dst.transform_initialize(src,inline_transform_initialize);
+        }
+    }
+    void inline_function(Window& ed,void*){
+        VisualNode& sel = ed.code().cursor().selected();
+        if(sel.type() == VisualNodeType::A && sel.a().type() == bbe::NodeType::CALL_BUILTIN && sel.a().getp32() == 0 && sel.a().children()[0uz].type() == bbe::NodeType::FNSYM){
+            bbe::ASTNode old = std::exchange(sel.a(),{bbe::NodeType::HAVEVAR,0,2,bbe::uninitialize});
+            sel.a().children()[0uz].initialize(std::move(old.children()[1uz]));
+            inline_transform_initialize(sel.a().children()[1uz],ed.project().entities().functions()[old.children()[0uz].getp32()].ast());
+            sel.arerender();
+        }
+    }
     void quit(Window&,void*){
         SDL_Event ev{.quit={
             .type=SDL_EVENT_QUIT,

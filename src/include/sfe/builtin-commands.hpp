@@ -7,6 +7,7 @@ namespace sfe::commands{
     void save(Window&,void*);
     void load(Window&,void*);
     void reset_cursor(Window&,void*);
+    void inline_function(Window&,void*);
     void quit(Window&,void*);
     void debug_selection(Window&,void*);
     void interpret(Window&,void*);

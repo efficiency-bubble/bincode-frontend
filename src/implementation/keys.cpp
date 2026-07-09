@@ -24,9 +24,15 @@ namespace sfe{
             bbe::ASTNode& n = e.cursor().selected().a();
             if(n.type() == bbe::NodeType::NTYPE){
                 if(auto it=replace.find(k);it!=replace.end()){
-                    n = {it->second.nt,it->second.prim,it->second.arity,bbe::null_initialize};
-                    e.cursor().selected().arerender();
-                    e.cursor().set_after(true);
+                    if(it->second.arity){
+                        n = {it->second.nt,it->second.prim,it->second.arity,bbe::null_initialize};
+                        e.cursor().selected().arerender();
+                        e.cursor().enter(0,false);
+                    }else{
+                        n = {it->second.nt,it->second.prim};
+                        e.cursor().selected().arerender();
+                        e.cursor().set_after(true);
+                    }
                     return true;
                 }
             }
