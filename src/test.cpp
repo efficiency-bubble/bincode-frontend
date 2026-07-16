@@ -71,12 +71,12 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             }
             if(ed.cursor().selected2().type() == sfe::VisualNodeType::A && ed.cursor().selected2().a().type() == bbe::NodeType::COMMA){
                 if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))&&ke.key()==SDLK_RETURN){
-                    ed.cursor().selected2().a().children().emplace(bbe::NodeType::NTYPE);
                     std::uint32_t indx = ed.cursor().index_of_selection();
                     bool aft = ed.cursor().is_after();
+                    ed.cursor().selected2().a().children().insert(indx+aft,bbe::NodeType::NTYPE);
                     ed.cursor().leave();
                     ed.cursor().selected().arerender();
-                    ed.cursor().enter(indx,aft);
+                    ed.cursor().enter(indx+1uz,aft);
                 }
             }
             break;
@@ -166,6 +166,7 @@ int main(){
     kc.register_node(SDLK_F,{bbe::NodeType::FNSYM,0,0});
     kc.register_node(SDLK_V,{bbe::NodeType::GETVAR,0,0});
     kc.register_node(SDLK_L,{bbe::NodeType::HAVEVAR,0,2});
+    kc.register_node(SDLK_Q,{bbe::NodeType::IMPORT_STUB,0,0});
     kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::PACK,0,1});
     
     const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};

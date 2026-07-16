@@ -179,6 +179,10 @@ namespace sfe{
                 // TODO
                 gc.draw_text_at_cursor(cppp::format<u8"**unimplemented: {}**"_ts>(std::to_underlying(a().type())),pos,1.0f,selected?RED:WHITE);
                 break;
+            case IMPORT_STUB:
+                gc.draw_text_at_cursor(u8"(extern)"s,pos,1.0f,WHITE);
+                cursor_pos = pos;
+                break;
         }
         if(selected){
             if(cursor.is_after()){

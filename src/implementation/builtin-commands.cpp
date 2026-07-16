@@ -147,9 +147,13 @@ namespace sfe::commands{
                 {
                     std::size_t cumsize = 0uz;
                     for(const auto& fn : ed.code().root().p().functions()){
-                        bbe::targets::x86::Function compiled{fn.cname(),fn,ed.project().entities().types()};
-                        cumsize = compiled.instructions().size();
-                        prog.export_function(fn.index(),std::move(compiled));
+                        if(fn.ast().type() == bbe::NodeType::IMPORT_STUB){
+                            prog.import_function(fn.index(),fn.cname());
+                        }else{
+                            bbe::targets::x86::Function compiled{fn.cname(),fn,ed.project().entities().types()};
+                            cumsize = compiled.instructions().size();
+                            prog.export_function(fn.index(),std::move(compiled));
+                        }
                     }
                     cppp::format_to<u8"{} bytes; "_ts>(rbuf,cumsize);
                 }

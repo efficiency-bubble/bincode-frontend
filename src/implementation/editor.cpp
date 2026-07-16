@@ -33,9 +33,11 @@ namespace sfe{
     void CodeEntry::keydown(Keypress kp){
         switch(kp.key()){
             case SDLK_LEFT:
+            case SDLK_UP:
                 navigate(false,true);
                 break;
             case SDLK_RIGHT:
+            case SDLK_DOWN:
                 navigate(true,true);
                 break;
             case SDLK_TAB:
@@ -58,11 +60,14 @@ namespace sfe{
                             [[assume(ti <= 1)]];
                             bbe::ASTNode tmp = std::move(_cursor.selected().a().children()[1-ti]);
                             _cursor.selected().a() = std::move(tmp);
+                            _cursor.selected().arerender();
                         }else{
                             switch(_cursor.selected().a().type()){
                                 case bbe::NodeType::COMMA:
                                 case bbe::NodeType::PACK:
-                                    _cursor.selected().a().children().pop(ti);
+                                    _cursor.selected().a().children().erase(ti);
+                                    _cursor.selected().arerender();
+                                    if(ti) _cursor.enter(ti-1,true);
                                     break;
                                 default:
                                     // can't drop down multiple nodes, just delete them
@@ -72,8 +77,8 @@ namespace sfe{
                         }
                     }else{
                         an = {bbe::NodeType::NTYPE,0};
+                        _cursor.selected().arerender();
                     }
-                    _cursor.selected().arerender();
                 }
                 break;
         }

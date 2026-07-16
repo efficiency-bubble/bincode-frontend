@@ -4,6 +4,9 @@
 #include<chrono>
 extern "C"{
     std::uint32_t example(std::uint32_t);
+    std::uint32_t identity(std::uint32_t i){
+        return i;
+    }
 }
 using hrc = std::chrono::high_resolution_clock;
 using namespace std::literals;
