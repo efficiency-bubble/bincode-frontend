@@ -3,7 +3,7 @@
 #include<sgl/draw/line.hpp>
 #include"color-picker-drawer.hpp"
 namespace sfe{
-    constexpr inline cppp::fvec3 DIM_ORANGE{0.2549019607843137f,0.2549019607843137f,0.2549019607843137f};
+    constexpr inline cppp::fvec3 COMPAL_COLOR{0.2549019607843137f,0.2549019607843137f,0.2549019607843137f};
     constexpr inline cppp::fvec3 WHITE{1.0f};
     constexpr inline cppp::fvec3 BLACK{0.0f};
     class GraphicsContext{

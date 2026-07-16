@@ -34,11 +34,11 @@ namespace sfe{
         float row_height = line_height + 2.0f * padding;
         float ascender = gc.font().font().ascender_px() * text_scale + padding;
         
-        gc.rect(pos,cppp::fvec2{width,row_height},DIM_ORANGE);
+        gc.rect(pos,cppp::fvec2{width,row_height},COMPAL_COLOR);
         
         for(std::size_t i=0uz;i<candidates.size();++i){
             pos.y() += line_height;
-            gc.rect(pos,cppp::fvec2{width,row_height},i==selection?WHITE:DIM_ORANGE);
+            gc.rect(pos,cppp::fvec2{width,row_height},i==selection?WHITE:COMPAL_COLOR);
             gc.draw_text(candidates[i]->first,pos+cppp::fvec2(0,ascender),text_scale,i==selection?BLACK:WHITE);
         }
     }

@@ -37,7 +37,7 @@ namespace sfe{
             void keydown(Keypress);
     };
     enum class TextboxTargetType{
-        COMMAND_PALETTE, FUNCTION_NAME
+        COMMAND_PALETTE, RAW_STRING
     };
     class Textbox{
         const cppp::str* buffer;
@@ -51,7 +51,7 @@ namespace sfe{
                 case TextboxTargetType::COMMAND_PALETTE:
                     buffer = &ctarget().buffer;
                     break;
-                case TextboxTargetType::FUNCTION_NAME:
+                case TextboxTargetType::RAW_STRING:
                     buffer = &ntarget();
                     break;
             }
@@ -82,7 +82,7 @@ namespace sfe{
                     case TextboxTargetType::COMMAND_PALETTE:
                         ctarget().append(more);
                         break;
-                    case TextboxTargetType::FUNCTION_NAME:
+                    case TextboxTargetType::RAW_STRING:
                         ntarget().append(more);
                         break;
                 }
@@ -93,7 +93,7 @@ namespace sfe{
                     case TextboxTargetType::COMMAND_PALETTE:
                         ctarget().backspace();
                         break;
-                    case TextboxTargetType::FUNCTION_NAME:
+                    case TextboxTargetType::RAW_STRING:
                         ntarget().pop_back();
                         break;
                 }

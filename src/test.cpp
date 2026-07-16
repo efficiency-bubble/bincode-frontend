@@ -108,6 +108,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                     case SDLK_RETURN: {
                         const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
                         bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{&b_uint32,&b_uint32});
+                        fn.set_cname(cppp::format<u8"fn{}"_ts>(fn.index()));
                         proj.names().name_function(fn.index(),{u8"_unnamed"s,new_chroma()});
                         ed.root().paddf(fn);
                         ed.root().prerender();
@@ -168,7 +169,7 @@ int main(){
     kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::PACK,0,1});
     
     const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
-    bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{&b_uint32,&b_uint32});
+    bbe::Function& fn = proj.entities().functions().emplace(u8"example"s,bbe::FunctionSignature{&b_uint32,&b_uint32});
     proj.names().name_function(fn.index(),{u8"testfn"s,new_chroma()});
     fn.ast() = {bbe::NodeType::NTYPE};
     
@@ -187,6 +188,7 @@ int main(){
     
     ed.add_command(u8"open command palette"s,SDLK_F1,sfe::commands::open_command_palette);
     ed.add_command(u8"rename selection"s,SDLK_F2,sfe::commands::rename_selection);
+    ed.add_command(u8"change function cname"s,{sfe::KeyModifiers::CTRL,SDLK_F2},sfe::commands::re_cname_selection);
     ed.add_command(u8"recolor"s,SDLK_F3,sfe::commands::recolor_selection);
     ed.add_command(u8"save"s,{sfe::KeyModifiers::CTRL,SDLK_S},sfe::commands::save);
     ed.add_command(u8"load"s,{sfe::KeyModifiers::CTRL,SDLK_O},sfe::commands::load);

@@ -3,6 +3,7 @@
 namespace sfe::commands{
     void open_command_palette(Window&,void*);
     void rename_selection(Window&,void*);
+    void re_cname_selection(Window&,void*);
     void recolor_selection(Window&,void*);
     void save(Window&,void*);
     void load(Window&,void*);

@@ -1,4 +1,4 @@
-COMPOPT := -std=c++26 -freflection -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -Werror -m64 -I"src/include" -I"/usr/include/freetype2" -I$(cppinclude) -fconcepts-diagnostics-depth=10
+COMPOPT := -std=c++26 -freflection -flto=7 -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -Wsign-conversion -Wno-maybe-uninitialized -Wnrvo -Werror -m64 -I"src/include" -I"/usr/include/freetype2" -I$(cppinclude) -fconcepts-diagnostics-depth=10
 RELEASEOPT := -O3 -s -DNDEBUG -fcontract-evaluation-semantic=ignore
 DEBUGOPT := -O0 -g -fcontract-evaluation-semantic=enforce
 FINALOPT := $(COMPOPT) -L$(cpplibs) -lsgl -lSDL3 -lglad -lfreetype -lfontconfig -lharfbuzz -ltbb

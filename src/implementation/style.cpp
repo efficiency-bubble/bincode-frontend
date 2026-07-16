@@ -4,14 +4,6 @@
 #include<cppp/uleb.hpp>
 #include<span>
 namespace sfe{
-    // cppp::str NameDatabase::display_function_name(bbe::func_id id) const{
-    //     if(auto it=fnames.find(id);it!=fnames.end()){
-    //         return it->second.identifier();
-    //     }else{
-    //         using namespace cppp::literals;
-    //         return cppp::format<u8"[unknown function {}]"_ts>(id);
-    //     }
-    // }
     std::optional<const Name&> NameDatabase::optget_function_name(bbe::func_id fid) const{
         if(auto it=fnames.find(fid);it!=fnames.end()){
             return it->second;
@@ -38,16 +30,18 @@ namespace sfe{
                 const bbe::FunctionSignature& sig = ti->function_signature();
                 return cppp::format<u8"{} => {}"_ts>(display_type_name(sig.parameter()),display_type_name(sig.return_type()));
             }
-            case PACK: {
-                cppp::str name{u8"pack["s};
-                for(const bbe::TypeInfo* t : ti->pack_contents().types()){
-                    name.append(display_type_name(t));
-                    name.append(u8", "sv);
-                }
-                name.pop_back();
-                name.back() = u8']';
-                return name;
-            }
+            case PACK:
+                // https://marralesfios.github.io/blog/nrvo
+                return [&]{
+                    cppp::str name{u8"pack["s};
+                    for(const bbe::TypeInfo* t : ti->pack_contents().types()){
+                        name.append(display_type_name(t));
+                        name.append(u8", "sv);
+                    }
+                    name.pop_back();
+                    name.back() = u8']';
+                    return name;
+                }();
             default:
                 if(auto it=dtnames.find(ti->index());it!=dtnames.end()){
                     return it->second.identifier();

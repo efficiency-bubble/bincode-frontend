@@ -21,7 +21,12 @@ namespace sfe::commands{
     }
     void rename_selection(Window& ed,void*){
         if(ed.code().cursor().selected().type() == VisualNodeType::F){
-            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::FUNCTION_NAME,&ed.project().names().get_function_name(ed.code().cursor().selected().f().index()));
+            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.project().names().get_function_name(ed.code().cursor().selected().f().index()));
+        }
+    }
+    void re_cname_selection(Window& ed,void*){
+        if(ed.code().cursor().selected().type() == VisualNodeType::F){
+            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.code().cursor().selected().f().cname());
         }
     }
     void recolor_selection(Window& ed,void*){
@@ -142,9 +147,9 @@ namespace sfe::commands{
                 {
                     std::size_t cumsize = 0uz;
                     for(const auto& fn : ed.code().root().p().functions()){
-                        bbe::targets::x86::Function compiled{fn,ed.project().entities().types()};
+                        bbe::targets::x86::Function compiled{fn.cname(),fn,ed.project().entities().types()};
                         cumsize = compiled.instructions().size();
-                        prog.export_function(cppp::format<u8"fn_{}"_ts>(fn.index()),fn.index(),std::move(compiled));
+                        prog.export_function(fn.index(),std::move(compiled));
                     }
                     cppp::format_to<u8"{} bytes; "_ts>(rbuf,cumsize);
                 }

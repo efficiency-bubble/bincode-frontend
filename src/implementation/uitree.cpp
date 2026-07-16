@@ -203,6 +203,7 @@ namespace sfe{
             cppp::fvec2 line_1{pos};
             const auto& fn = names.get_function_name(f().index());
             gc.draw_text_at_cursor(fn.identifier(),line_1,1.0f,fn.color());
+            gc.draw_text_at_cursor(f().cname(),line_1,0.45f,GRAY);
             gc.draw_text_at_cursor(cppp::format<u8"({}) -> {}:"_ts>(names.display_type_name(f().signature().parameter()),names.display_type_name(f().signature().return_type())),line_1,1.0f,WHITE);
             right_x = line_1.x();
         }
