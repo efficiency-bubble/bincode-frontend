@@ -236,8 +236,9 @@ namespace sfe{
                 }
             }
             void keydown(Keypress kp){
-                if(!(kp.mods()&(KeyModifiers::CTRL|KeyModifiers::SHIFT|KeyModifiers::ALT))){
-                    if(textbox){
+                bool hasmods = kp.mods()&(KeyModifiers::CTRL|KeyModifiers::SHIFT|KeyModifiers::ALT);
+                if(textbox){
+                    if(!hasmods){
                         switch(kp.key()){
                             case SDLK_BACKSPACE:
                                 textbox.backspace();
@@ -264,11 +265,13 @@ namespace sfe{
                                 cp.prev();
                                 return;
                         }
-                        return;
-                    }else if(pk.is_open()){
-                        if(kp.key() == SDLK_ESCAPE) pk.close();
-                        return;
                     }
+                    return;
+                }else if(pk.is_open()){
+                    if(!hasmods){
+                        if(kp.key() == SDLK_ESCAPE) pk.close();
+                    }
+                    return;
                 }
                 if(!hr.handle(*this,kp)){
                     ce.keydown(kp);
