@@ -286,7 +286,7 @@ namespace sfe{
             }
             void render_overlay() const{
                 if(pk.is_open()){
-                    pk.render(gc,{static_cast<float>(gc.cmap().win_size().x())-245.0f,10.0f});
+                    pk.render(gc,{static_cast<float>(gc.cmap().win_size().x())-310.0f,10.0f});
                 }
                 if(is_command_palette_open()){
                     cppp::fvec3 top_edge = get_overlay_top_edge();

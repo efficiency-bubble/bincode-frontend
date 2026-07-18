@@ -19,7 +19,7 @@ namespace sfe{
                 return ptr;
             }
             void render(const GraphicsContext& gc,cppp::fvec2 pos) const{
-                gc.rainbow(pos,{235.0f,235.0f},hsv);
+                gc.rainbow(pos,{300.0f,300.0f},hsv);
             }
             cppp::fvec3 get_hsv() const{
                 return hsv;
