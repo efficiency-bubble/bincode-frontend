@@ -179,7 +179,7 @@ int main(){
     SDL_InitSubSystem(SDL_INIT_VIDEO);
 
     { // scope for all GL objects. Their dtors must run before we destroy everything with SDL_Quit().
-    sfe::Window ed{proj,{u8"edBCC (SGL)"s,1200,600},proj.entities(),{code_font(),{1200,600},1.0f}};
+    sfe::Window ed{proj,{u8"edBCC (SGL)"s,1200,600,SDL_WINDOW_RESIZABLE|SDL_WINDOW_HIGH_PIXEL_DENSITY},proj.entities(),{code_font(),{1200.0f,600.0f},1.0f}};
     glClearColor(0.0f,0.0f,0.0f,1.0f);
     glEnable(GL_CULL_FACE);
     glLineWidth(3.0f);
@@ -204,10 +204,12 @@ int main(){
         for(const auto& e : sgl::events()){
             switch(e.type){
                 case SDL_EVENT_QUIT: goto cleanup;
-                case SDL_EVENT_WINDOW_RESIZED:
+                case SDL_EVENT_WINDOW_RESIZED: {
                     glViewport(0,0,e.window.data1,e.window.data2);
-                    ed.graphics_context().update_window(static_cast<std::uint32_t>(e.window.data1),static_cast<std::uint32_t>(e.window.data2));
+                    float scaling = SDL_GetWindowDisplayScale(ed.system_window().native_handle());
+                    ed.graphics_context().update_window(static_cast<float>(e.window.data1)/scaling,static_cast<float>(e.window.data2)/scaling);
                     break;
+                }
                 case SDL_EVENT_TEXT_EDITING:
                     ed.preedit_set(static_cast<std::uint32_t>(e.edit.start),static_cast<std::uint32_t>(e.edit.length),e.edit.text);
                     break;
@@ -246,7 +248,7 @@ int main(){
         if(ed.code().cursor().selected().type() == sfe::VisualNodeType::A){
             bbe::ASTNode& an = ed.code().cursor().selected().a();
             constexpr static float DIAG_TEXT_SCALE = 0.65f;
-            float winheight_f = static_cast<float>(ed.graphics_context().cmap().win_size().y());
+            float winheight_f = ed.graphics_context().cmap().win_size().y();
             float y = winheight_f * 0.75f + ed.graphics_context().ascender()*DIAG_TEXT_SCALE;
             for(const auto& em : edb.query(&an)){
                 ed.graphics_context().draw_text(em.reason(),{10.0f,y},DIAG_TEXT_SCALE,{1.0f,0.0f,0.0f});

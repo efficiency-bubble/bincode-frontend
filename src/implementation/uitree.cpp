@@ -229,7 +229,7 @@ namespace sfe{
             pos.y() += gc.line_height();
         }
         if(&cursor.selected() == this){
-            cppp::fvec2 botright = gc.cmap().win_size()-cppp::uvec2{10,10};
+            cppp::fvec2 botright = gc.cmap().win_size()-cppp::fvec2{10.0f,10.0f};
             gc.line({10.0f,10.0f},CURSOR_ACCENT_1,{botright.x(),10.0f},CURSOR_ACCENT_2);
             gc.line({botright.x(),10.0f},CURSOR_ACCENT_2,botright,CURSOR_ACCENT_1);
             gc.line({10.0f,10.0f},CURSOR_ACCENT_1,{10.0f,botright.y()},CURSOR_ACCENT_2);

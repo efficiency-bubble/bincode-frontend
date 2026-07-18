@@ -15,7 +15,7 @@ namespace sfe{
         float scale;
         public:
             GraphicsContext(sgl::CachedFont&& f,sgl::CoordinateMap cm,float scale) : cf(std::move(f)), cm(cm), scale(scale){}
-            void update_window(std::uint32_t w,std::uint32_t h){
+            void update_window(float w,float h){
                 cm.update(w,h);
             }
             void draw_text_at_cursor(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec3 color) const{
@@ -30,16 +30,25 @@ namespace sfe{
             void line(cppp::fvec2 spos,cppp::fvec3 scolor,cppp::fvec2 tpos,cppp::fvec3 tcolor) const{
                 ld.line(cm.cvt_abs(spos),scolor,cm.cvt_abs(tpos),tcolor);
             }
-            void rect(cppp::uvec2 pos,cppp::uvec2 size,cppp::fvec3 color) const{
-                std::array<float,4uz> old_clearcolor;
+            void rect(cppp::fvec2 pos,cppp::fvec2 size,cppp::fvec3 color) const{
+                cppp::fvec4 old_clearcolor;
                 glGetFloatv(GL_COLOR_CLEAR_VALUE,old_clearcolor.data());
                 pos.y() = cm.win_size().y()-(pos.y()+size.y());
+                // HACK: please come up with something better
+                cppp::vec4<GLint> viewportparametersi;
+                glGetIntegerv(GL_VIEWPORT,viewportparametersi.data());
+                cppp::fvec4 viewportparameters{viewportparametersi};
+                cppp::fvec2 viewportoffset{viewportparameters.x(),viewportparameters.y()};
+                cppp::fvec2 viewportdimensions{viewportparameters.z(),viewportparameters.w()};
+                pos = viewportoffset + viewportdimensions * pos/cm.win_size();
+                size = viewportdimensions * size/cm.win_size();
+                
                 glScissor(static_cast<GLint>(pos.x()),static_cast<GLint>(pos.y()),static_cast<GLsizei>(size.x()),static_cast<GLsizei>(size.y()));
                 glEnable(GL_SCISSOR_TEST);
                 glClearColor(color.x(),color.y(),color.z(),1.0f);
                 glClear(GL_COLOR_BUFFER_BIT);
                 glDisable(GL_SCISSOR_TEST);
-                glClearColor(old_clearcolor[0uz],old_clearcolor[1uz],old_clearcolor[2uz],old_clearcolor[3uz]);
+                glClearColor(old_clearcolor.x(),old_clearcolor.y(),old_clearcolor.z(),old_clearcolor.w());
             }
             const sgl::CoordinateMap cmap() const{
                 return cm;

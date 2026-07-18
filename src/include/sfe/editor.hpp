@@ -281,12 +281,12 @@ namespace sfe{
                 ce.render_full(gc,edb,ndb,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}),altmode);
             }
             cppp::fvec3 get_overlay_top_edge() const{
-                float half_winw = static_cast<float>(gc.cmap().win_size().x())/2.0f;
+                float half_winw = gc.cmap().win_size().x()/2.0f;
                 return {half_winw*0.4f,10.0f,half_winw*1.2f};
             }
             void render_overlay() const{
                 if(pk.is_open()){
-                    pk.render(gc,{static_cast<float>(gc.cmap().win_size().x())-310.0f,10.0f});
+                    pk.render(gc,{gc.cmap().win_size().x()-310.0f,10.0f});
                 }
                 if(is_command_palette_open()){
                     cppp::fvec3 top_edge = get_overlay_top_edge();

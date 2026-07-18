@@ -3,7 +3,7 @@
 namespace sfe{
     using namespace std::literals;
     // HSV to RGB algorithm from https://stackoverflow.com/a/17897228
-    SVPickerSquareDrawer::SVPickerSquareDrawer() : prog(u8"#version 460 core\nlayout(location=0)in vec2 t;layout(location=0)out vec2 T;layout(location=0)uniform vec2 p;layout(location=1)uniform vec2 s;void main(){T=t;gl_Position=vec4(p+t*s,0.,1.);}"sv,u8"#version 460 core\nout vec4 c;layout(location=0)in vec2 t;layout(location=2)uniform vec3 i;vec3 F(vec3 j,vec2 q){return q.y*(1.-q.x*clamp(min(j,4.-j),0.,1.));}vec3 I(vec3 P,vec3 Q,float R,float S, float T){return mix(P,Q,smoothstep(S,T,R));}void main(){vec3 k=mod(i.x+vec3(5.,3.,1.),6.),C=F(k,i.yz);float l=length(i.yz-t);c=vec4(I(C,I(vec3(dot(C,vec3(.2126,.7152,.0722))<.5?1.:0.),F(k,t),l,.032,.036),l,.0194,.0244),1.);}"sv){
+    SVPickerSquareDrawer::SVPickerSquareDrawer() : prog(u8"#version 460 core\nlayout(location=0)in vec2 t;layout(location=0)out vec2 T;layout(location=0)uniform vec2 p;layout(location=1)uniform vec2 s;void main(){T=t;gl_Position=vec4(p+t*s,0.,1.);}"sv,u8"#version 460 core\nout vec4 c;layout(location=0)in vec2 t;layout(location=2)uniform vec3 i;vec3 F(vec3 j,vec2 q){return q.y*(1.-q.x*clamp(min(j,4.-j),0.,1.));}vec3 I(vec3 P,vec3 Q,float R,float S,float e){return mix(P,Q,smoothstep(S-e,S+e,R));}void main(){vec3 k=mod(i.x+vec3(5.,3.,1.),6.),C=F(k,i.yz);float l=length(i.yz-t),E=fwidth(l)*.6;c=vec4(I(C,I(vec3(dot(C,vec3(.2126,.7152,.0722))<.5?1.:0.),F(k,t),l,.034,E),l,.0219,E),1.);}"sv){
         constexpr static std::array data{
             1.0f,0.0f,
             1.0f,1.0f,
