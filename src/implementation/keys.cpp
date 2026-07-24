@@ -1,12 +1,13 @@
 #include<sfe/keys.hpp>
 #include<sfe/uitree.hpp>
 #include<sfe/editor.hpp>
+#include<concepts>
 namespace sfe{
     static void steal_lhs(VisualNode& ui,bbe::ASTNode&& node){
-        cppp::swap(node,ui.a());
+        std::ranges::swap(node,ui.a());
         // node is now old
         VisualNode old_ui{ui.a(),VisualNode::no_populate};
-        cppp::swap(old_ui,ui);
+        std::ranges::swap(old_ui,ui);
         
         old_ui.repoint(ui.a().children()[0] = std::move(node));
         old_ui.arerender();

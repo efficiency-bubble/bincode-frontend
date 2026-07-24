@@ -21,8 +21,8 @@ namespace sfe{
         void* nd;
         VisualNodeType _type;
         friend void swap(VisualNode& lhs,VisualNode& rhs){
-            cppp::swap(lhs._children,rhs._children);
-            cppp::swap(lhs.nd,rhs.nd);
+            std::ranges::swap(lhs._children,rhs._children);
+            std::ranges::swap(lhs.nd,rhs.nd);
         }
         struct no_populate_t{};
         public:
