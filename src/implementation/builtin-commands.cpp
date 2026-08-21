@@ -10,8 +10,11 @@
 #include<SDL3/SDL_events.h>
 #include<cppp/bfile.hpp>
 #include<cppp/print.hpp>
+#include<cppp/int.hpp>
 #include<cstdlib>
 #include<stdio.h> // popen
+#include<numeric>
+#include<ranges>
 #include<chrono>
 #include<memory>
 namespace sfe::commands{
@@ -180,6 +183,22 @@ namespace sfe::commands{
             ed.toast().reset(std::move(rbuf),3s);
         }catch(const std::exception& e){
             ed.toast().reset(cppp::tou8(std::string_view(e.what())),3s);
+        }
+    }
+    void adjc(Window& ed,void* dir){
+        bool up = (dir != nullptr);
+        for(const auto& elt : ed.code().cursor().path_elements() | std::views::reverse){
+            if(elt.p->type() != VisualNodeType::A) break;
+            if(elt.p->a().type() == bbe::NodeType::COMMA){
+                if(up){
+                    elt.p->a().setp32(std::saturating_sub(elt.p->a().getp32(),1_u32));
+                }else{
+                    std::uint32_t newind = elt.p->a().getp32() + 1;
+                    if(newind < elt.p->a().children().size()){
+                        elt.p->a().setp32(newind);
+                    }
+                }
+            }
         }
     }
 }

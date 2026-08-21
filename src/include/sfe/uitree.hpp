@@ -2,7 +2,6 @@
 #include<cppp/type-erasure.hpp>
 #include<bbe/project_entity_pool.hpp>
 #include<bbe/function.hpp>
-#include<cppp/swap.hpp>
 #include<bbe/ast.hpp>
 #include<type_traits>
 #include<concepts>
@@ -144,13 +143,12 @@ namespace sfe{
                 return _type;
             }
     };
-    // Owns the root for perf reasons (no need to store an extra pointer)
+    struct PathEntry{
+        VisualNode* p;
+        std::uint32_t index;
+    };
     class Breadcrumbs{
         VisualNode _root;
-        struct PathEntry{
-            VisualNode* p;
-            std::uint32_t index;
-        };
         // forward_list::clear is very slow
         std::vector<PathEntry> path;
         const PathEntry& etop() const{
@@ -160,6 +158,9 @@ namespace sfe{
             return path.back();
         }
         public:
+            const std::vector<PathEntry>& elements() const{
+                return path;
+            }
             Breadcrumbs(VisualNode&& root) : _root(std::move(root)){}
             VisualNode& root(){
                 return _root;
@@ -217,6 +218,9 @@ namespace sfe{
         bool after;
         public:
             UICursor(VisualNode&& root) : crumbs(std::move(root)), after(false){}
+            const std::vector<PathEntry>& path_elements() const{
+                return crumbs.elements();
+            }
             const VisualNode& root() const{
                 return crumbs.root();
             }
@@ -225,6 +229,7 @@ namespace sfe{
             }
             void home(){
                 crumbs.home();
+                after = false;
             }
             void enter(std::uint32_t c){
                 crumbs.enter(c);

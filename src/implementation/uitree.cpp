@@ -1,9 +1,11 @@
 #include<cppp/format.hpp>
 #include<sfe/uitree.hpp>
+#include<cppp/rtl.hpp>
 namespace sfe{
     using namespace std::literals;
     using namespace cppp::literals;
     constexpr static cppp::fvec3 RED{1.0f,0.0f,0.0f};
+    constexpr static cppp::fvec3 HIGHLIGHT{0.10588235294117647f,0.9607843137254902f,0.7294117647058823f};
     constexpr static cppp::fvec3 GRAY{0.7f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_1{0.5f,0.0f,0.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_2{0.8f,1.0f,1.0f};
@@ -95,11 +97,6 @@ namespace sfe{
                     case 30:
                         draw_binop(u8"*"sv,_children,gc,errors,names,cursor,pos,indentation,apriority(),altmode);
                         break;
-                    case 25:
-                        gc.draw_text_at_cursor(u8"print("sv,pos,1.0f,WHITE);
-                        _children.front().adraw(gc,errors,names,cursor,pos,indentation,altmode);
-                        gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
-                        break;
                     case 50:
                         draw_binop(u8"="sv,_children,gc,errors,names,cursor,pos,indentation,apriority(),altmode);
                         break;
@@ -109,6 +106,11 @@ namespace sfe{
                     case 60:
                         gc.draw_text_at_cursor(u8"!"s,pos,1.0f,WHITE);
                         draw_operand(_children.front(),gc,errors,names,cursor,pos,indentation,apriority(),altmode);
+                        break;
+                    case 100:
+                        gc.draw_text_at_cursor(u8"print("sv,pos,1.0f,WHITE);
+                        _children.front().adraw(gc,errors,names,cursor,pos,indentation,altmode);
+                        gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
                         break;
                     default:
                         gc.draw_text_at_cursor(cppp::format<u8"BUILTIN[{}]("_ts>(a().getp32()),pos,1.0f,WHITE);
@@ -136,6 +138,7 @@ namespace sfe{
                 for(std::uint32_t i=0;i<_children.size();++i){
                     pos.x() = inner_indentation;
                     pos.y() += gc.line_height();
+                    if(i == a().getp32()) gc.draw_text_at_cursor(u8"·"sv,cppp::rtl<cppp::fvec2>(auto(pos - cppp::fvec2{gc.charadvance() * 2.0f,0.0f})),1.0f,HIGHLIGHT);
                     _children[i].adraw(gc,errors,names,cursor,pos,inner_indentation,altmode);
                     gc.draw_text_at_cursor(u8";"sv,pos,1.0f,WHITE);
                 }
@@ -174,6 +177,11 @@ namespace sfe{
                 cursor_pos = pos;
                 break;
             case SETVAR:
+                gc.draw_text_at_cursor(cppp::format<u8"let var#{}"_ts>(a().getp32()),pos,1.0f,WHITE);
+                gc.draw_text_at_cursor(u8" = "sv,pos,1.0f,RED);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
+                cursor_pos = pos;
+                break;
             case UINT32SYM:
             case UINT64:
                 // TODO

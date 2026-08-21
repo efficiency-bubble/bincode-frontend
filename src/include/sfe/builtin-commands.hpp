@@ -7,6 +7,7 @@ namespace sfe::commands{
     void recolor_selection(Window&,void*);
     void save(Window&,void*);
     void load(Window&,void*);
+    void adjc(Window&,void*);
     void reset_cursor(Window&,void*);
     void inline_function(Window&,void*);
     void quit(Window&,void*);

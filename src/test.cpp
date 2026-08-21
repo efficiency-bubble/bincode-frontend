@@ -3,7 +3,6 @@
 #include<sfe/style.hpp>
 #include<sfe/builtin-commands.hpp>
 #include<cppp/format.hpp>
-#include<cppp/swap.hpp>
 #include<cppp/int.hpp>
 #include<sgl/sgl.hpp>
 #include<bbe/bbe.hpp>
@@ -155,6 +154,7 @@ int main(){
     kc.register_key(SDLK_EQUALS,{bbe::NodeType::CALL_BUILTIN,50,2});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{bbe::NodeType::CALL_BUILTIN,0,2});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_COMMA},{bbe::NodeType::CALL_BUILTIN,51,2});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_3},{bbe::NodeType::CALL_BUILTIN,100,1});
     kc.register_key(SDLK_COMMA,{bbe::NodeType::COMMA,0,2});
     kc.register_key(SDLK_LEFTBRACKET,{bbe::NodeType::PACKIND,0,1});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_SLASH},{bbe::NodeType::FORK,0,3});
@@ -193,13 +193,15 @@ int main(){
     ed.add_command(u8"recolor"s,SDLK_F3,sfe::commands::recolor_selection);
     ed.add_command(u8"save"s,{sfe::KeyModifiers::CTRL,SDLK_S},sfe::commands::save);
     ed.add_command(u8"load"s,{sfe::KeyModifiers::CTRL,SDLK_O},sfe::commands::load);
+    ed.add_command({sfe::KeyModifiers::CTRL,SDLK_UP},{sfe::commands::adjc,&ed});
+    ed.add_command({sfe::KeyModifiers::CTRL,SDLK_DOWN},{sfe::commands::adjc,nullptr});
     ed.add_command(u8"reset cursor"s,SDLK_F8,sfe::commands::reset_cursor);
     ed.add_command(u8"inline function"s,sfe::commands::inline_function);
     ed.add_command(u8"exit"s,sfe::commands::quit);
     ed.add_command(u8"debug selection"s,SDLK_F7,sfe::commands::debug_selection);
     ed.add_command(u8"compile code for x86"s,SDLK_F6,{sfe::commands::compile_and_run,&edb});
     ed.add_command(u8"interpret code"s,SDLK_F5,{sfe::commands::interpret,&edb});
-    fn.ast().recursively_recalculate_result_type(proj.entities(),edb,fn.signature());
+    fn.recalculate_types(proj.entities(),edb);
     while(true){
         for(const auto& e : sgl::events()){
             switch(e.type){
@@ -224,8 +226,8 @@ int main(){
                         ed.keydown(kp);
                     }
                     edb.clear();
-                    for(auto& f: proj.entities().functions()){
-                        f.ast().recursively_recalculate_result_type(proj.entities(),edb,f.signature());
+                    for(auto& f : proj.entities().functions()){
+                        f.recalculate_types(proj.entities(),edb);
                     }
                     break;
             }
