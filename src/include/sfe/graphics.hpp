@@ -1,6 +1,7 @@
 #pragma once
 #include<sgl/ext/freetype.hpp>
 #include<sgl/draw/line.hpp>
+#include<sgl/draw/rect.hpp>
 #include"color-picker-drawer.hpp"
 namespace sfe{
     constexpr inline cppp::fvec3 COMPAL_COLOR{0.2549019607843137f,0.2549019607843137f,0.2549019607843137f};
@@ -12,6 +13,7 @@ namespace sfe{
         sgl::SDFTextRenderer tr;
         sgl::CachedFont cf;
         sgl::CoordinateMap cm;
+        sgl::MonochromeRectDrawer mrd;
         float scale;
         public:
             GraphicsContext(sgl::CachedFont&& f,sgl::CoordinateMap cm,float scale) : cf(std::move(f)), cm(cm), scale(scale){}
@@ -31,24 +33,7 @@ namespace sfe{
                 ld.line(cm.cvt_abs(spos),scolor,cm.cvt_abs(tpos),tcolor);
             }
             void rect(cppp::fvec2 pos,cppp::fvec2 size,cppp::fvec3 color) const{
-                cppp::fvec4 old_clearcolor;
-                glGetFloatv(GL_COLOR_CLEAR_VALUE,old_clearcolor.data());
-                pos.y() = cm.win_size().y()-(pos.y()+size.y());
-                // HACK: please come up with something better
-                cppp::vec4<GLint> viewportparametersi;
-                glGetIntegerv(GL_VIEWPORT,viewportparametersi.data());
-                cppp::fvec4 viewportparameters{viewportparametersi};
-                cppp::fvec2 viewportoffset{viewportparameters.x(),viewportparameters.y()};
-                cppp::fvec2 viewportdimensions{viewportparameters.z(),viewportparameters.w()};
-                pos = viewportoffset + viewportdimensions * pos/cm.win_size();
-                size = viewportdimensions * size/cm.win_size();
-                
-                glScissor(static_cast<GLint>(pos.x()),static_cast<GLint>(pos.y()),static_cast<GLsizei>(size.x()),static_cast<GLsizei>(size.y()));
-                glEnable(GL_SCISSOR_TEST);
-                glClearColor(color.x(),color.y(),color.z(),1.0f);
-                glClear(GL_COLOR_BUFFER_BIT);
-                glDisable(GL_SCISSOR_TEST);
-                glClearColor(old_clearcolor.x(),old_clearcolor.y(),old_clearcolor.z(),old_clearcolor.w());
+                mrd.rect(cm.cvt_abs(pos),cm.cvt_rel(size),{color,1.0f});
             }
             const sgl::CoordinateMap cmap() const{
                 return cm;

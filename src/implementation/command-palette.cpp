@@ -30,9 +30,9 @@ namespace sfe{
     }
     void CommandPalette::render(const GraphicsContext& gc,cppp::fvec2 pos,float width,float text_scale) const{
         const float padding = 2.0f * text_scale;
-        float line_height = gc.font().font().line_height_px() * text_scale;
+        float line_height = gc.line_height() * text_scale;
         float row_height = line_height + 2.0f * padding;
-        float ascender = gc.font().font().ascender_px() * text_scale + padding;
+        float ascender = gc.ascender() * text_scale + padding;
         
         gc.rect(pos,cppp::fvec2{width,row_height},COMPAL_COLOR);
         
