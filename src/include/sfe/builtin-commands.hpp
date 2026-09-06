@@ -8,6 +8,7 @@ namespace sfe::commands{
     void save(Window&,void*);
     void load(Window&,void*);
     void adjc(Window&,void*);
+    void gc(Window&,void*);
     void reset_cursor(Window&,void*);
     void inline_function(Window&,void*);
     void quit(Window&,void*);

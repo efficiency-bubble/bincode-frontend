@@ -197,6 +197,7 @@ int main(){
     ed.add_command({sfe::KeyModifiers::CTRL,SDLK_DOWN},{sfe::commands::adjc,nullptr});
     ed.add_command(u8"reset cursor"s,SDLK_F8,sfe::commands::reset_cursor);
     ed.add_command(u8"inline function"s,sfe::commands::inline_function);
+    ed.add_command(u8"garbage collect type database"s,sfe::commands::gc);
     ed.add_command(u8"exit"s,sfe::commands::quit);
     ed.add_command(u8"debug selection"s,SDLK_F7,sfe::commands::debug_selection);
     ed.add_command(u8"compile code for x86"s,SDLK_F6,{sfe::commands::compile_and_run,&edb});

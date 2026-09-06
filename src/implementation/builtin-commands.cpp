@@ -201,4 +201,7 @@ namespace sfe::commands{
             }
         }
     }
+    void gc(Window& ed,void*){
+        ed.project().names().garbage_collect(ed.project().entities().garbage_collect());
+    }
 }

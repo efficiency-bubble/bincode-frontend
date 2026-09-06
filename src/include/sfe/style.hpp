@@ -34,6 +34,17 @@ namespace sfe{
         public:
             NameDatabase() = default;
             NameDatabase(cppp::frozen_byte_view&);
+            void garbage_collect(const bbe::LinearMovingGarbageCollectedPool<bbe::TypeInfo>::Sweeper& swp){
+                const auto end = dtnames.end();
+                for(auto it=dtnames.begin();it!=end;){
+                    name_map_t<bbe::type_id>::node_type node{dtnames.extract(it)};
+                    const bbe::TypeInfo& type = swp.query(node.key());
+                    if(type.marked()){
+                        node.key() = type.index();
+                        dtnames.insert(std::move(node));
+                    }
+                }
+            }
             void name_function(bbe::func_id fid,Name n){
                 fnames.try_emplace(fid,std::move(n));
             }
