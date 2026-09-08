@@ -203,6 +203,10 @@ int main(){
     ed.add_command(u8"compile code for x86"s,SDLK_F6,{sfe::commands::compile_and_run,&edb});
     ed.add_command(u8"interpret code"s,SDLK_F5,{sfe::commands::interpret,&edb});
     fn.recalculate_types(proj.entities(),edb);
+    
+    const float SCROLL_SENSITIVITY = 1.0f * ed.graphics_context().line_height();
+    float y_scroll = 0.0f;
+    
     while(true){
         for(const auto& e : sgl::events()){
             switch(e.type){
@@ -221,7 +225,7 @@ int main(){
                     ed.textinput({std::start_lifetime_as_array<char8_t>(e.text.text,len),len});
                     break;
                 }
-                case SDL_EVENT_KEY_DOWN:
+                case SDL_EVENT_KEY_DOWN: {
                     sfe::Keypress kp{e.key};
                     if(ed.is_textbox_open() || ed.color_picker().is_open() || !keydown(ed.toast(),proj,ed.code(),kc,kp)){
                         ed.keydown(kp);
@@ -230,6 +234,10 @@ int main(){
                     for(auto& f : proj.entities().functions()){
                         f.recalculate_types(proj.entities(),edb);
                     }
+                    break;
+                }
+                case SDL_EVENT_MOUSE_WHEEL:
+                    y_scroll = std::max(y_scroll - e.wheel.y * SCROLL_SENSITIVITY,0.0f);
                     break;
             }
         }
@@ -244,7 +252,7 @@ int main(){
             ed.color_picker().set_hsv(hsv);
         }
         glClear(GL_COLOR_BUFFER_BIT);
-        ed.render(edb,proj.names(),keys[SDL_SCANCODE_LALT]);
+        ed.render_code(edb,proj.names(),y_scroll,keys[SDL_SCANCODE_LALT]);
         if(ed.toast().alive()){
             ed.graphics_context().draw_text(ed.toast().message(),{10.0f,10.0f+ed.graphics_context().ascender()*0.6f},0.6f,{1.0f,0.0f,0.0f});
         }

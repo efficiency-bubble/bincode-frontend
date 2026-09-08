@@ -30,16 +30,20 @@ namespace sfe{
     }
     void CommandPalette::render(const GraphicsContext& gc,cppp::fvec2 pos,float width,float text_scale) const{
         const float padding = 2.0f * text_scale;
-        float line_height = gc.line_height() * text_scale;
-        float row_height = line_height + 2.0f * padding;
-        float ascender = gc.ascender() * text_scale + padding;
+        const float line_height = gc.line_height() * text_scale;
+        const float row_height = line_height + 2.0f * padding;
+        const float ascender = gc.ascender() * text_scale + padding;
+        const float left = pos.x();
+        const float right = left + width;
         
         gc.rect(pos,cppp::fvec2{width,row_height},COMPAL_COLOR);
         
+        pos.y() += ascender;
         for(std::size_t i=0uz;i<candidates.size();++i){
+            gc.rect(pos - cppp::fvec2(0.0f,ascender),cppp::fvec2{width,row_height},i==selection?WHITE:COMPAL_COLOR);
+            gc.draw_wrapped_text_at_cursor(candidates[i]->first,pos,right,left,text_scale,i==selection?BLACK:WHITE);
             pos.y() += line_height;
-            gc.rect(pos,cppp::fvec2{width,row_height},i==selection?WHITE:COMPAL_COLOR);
-            gc.draw_text(candidates[i]->first,pos+cppp::fvec2(0,ascender),text_scale,i==selection?BLACK:WHITE);
+            pos.x() = left;
         }
     }
 }

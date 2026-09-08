@@ -44,7 +44,7 @@ namespace sfe{
             std::vector<VisualNode>& children(){
                 return _children;
             }
-            void adraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,float indentation,bool altmode) const;
+            void adraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,float right,float left,bool altmode) const;
             void fdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,bool altmode) const;
             void pdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,bool altmode) const;
             void repoint(bbe::ASTNode& other){

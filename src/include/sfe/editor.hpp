@@ -277,8 +277,8 @@ namespace sfe{
                     ce.keydown(kp);
                 }
             }
-            void render(const bbe::ErrorDatabase& edb,const NameDatabase& ndb,bool altmode) const{
-                ce.render_full(gc,edb,ndb,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()}),altmode);
+            void render_code(const bbe::ErrorDatabase& edb,const NameDatabase& ndb,float scroll,bool altmode) const{
+                ce.render_full(gc,edb,ndb,cppp::rtl<cppp::fvec2>({10.0f,10.0f+gc.line_height()*0.65f+gc.ascender()-scroll}),altmode);
             }
             cppp::fvec3 get_overlay_top_edge() const{
                 float half_winw = gc.cmap().win_size().x()/2.0f;

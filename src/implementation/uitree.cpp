@@ -10,20 +10,20 @@ namespace sfe{
     constexpr static cppp::fvec3 CURSOR_ACCENT_1{0.5f,0.0f,0.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_2{0.8f,1.0f,1.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_WEAK{0.3f,0.7f,0.7f};
-    static void draw_operand(const VisualNode& operand,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float indentation,std::uint32_t my_priority,bool altmode){
+    static void draw_operand(const VisualNode& operand,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,std::uint32_t my_priority,bool altmode){
         bool parenthesize = altmode || operand.apriority() < my_priority;
         if(parenthesize){
-            gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
+            gc.draw_wrapped_text_at_cursor(u8"("sv,pos,right,left,1.0f,WHITE);
         }
-        operand.adraw(gc,errors,names,cursor,pos,indentation,altmode);
+        operand.adraw(gc,errors,names,cursor,pos,right,left,altmode);
         if(parenthesize){
-            gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
+            gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
         }
     }
-    static void draw_binop(std::u8string_view op,const std::vector<VisualNode>& children,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float indentation,std::uint32_t my_priority,bool altmode){
-        draw_operand(children[0uz],gc,errors,names,cursor,pos,indentation,my_priority,altmode);
-        gc.draw_text_at_cursor(op,pos,1.0f,RED);
-        draw_operand(children[1uz],gc,errors,names,cursor,pos,indentation,my_priority+1,altmode);
+    static void draw_binop(std::u8string_view op,const std::vector<VisualNode>& children,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,std::uint32_t my_priority,bool altmode){
+        draw_operand(children[0uz],gc,errors,names,cursor,pos,right,left,my_priority,altmode);
+        gc.draw_wrapped_text_at_cursor(op,pos,right,left,1.0f,RED);
+        draw_operand(children[1uz],gc,errors,names,cursor,pos,right,left,my_priority+1,altmode);
     }
     std::uint32_t VisualNode::apriority() const{
         assert_a();
@@ -46,7 +46,7 @@ namespace sfe{
         }
         return 1984;
     }
-    void VisualNode::adraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float indentation,bool altmode) const{
+    void VisualNode::adraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,bool altmode) const{
         assert_a();
         cppp::fvec2 start_pos = pos;
         cppp::fvec2 cursor_pos;
@@ -54,141 +54,141 @@ namespace sfe{
         switch(a().type()){
             using enum bbe::NodeType;
             case ARG:
-                gc.draw_text_at_cursor(u8"arg"sv,pos,0.75f,WHITE);
+                gc.draw_wrapped_text_at_cursor(u8"arg"sv,pos,right,left,0.75f,WHITE);
                 cursor_pos = pos;
                 break;
             case FNSYM: {
                 if(auto fname = names.optget_function_name(a().getp32())){
-                    gc.draw_text_at_cursor(fname->identifier(),pos,1.0f,fname->color());
+                    gc.draw_wrapped_text_at_cursor(fname->identifier(),pos,right,left,1.0f,fname->color());
                 }else{
-                    gc.draw_text_at_cursor(cppp::format<u8"[unknown function {}]"_ts>(a().getp32()),pos,1.0f,RED);
+                    gc.draw_wrapped_text_at_cursor(cppp::format<u8"[unknown function {}]"_ts>(a().getp32()),pos,right,left,1.0f,RED);
                 }
                 cursor_pos = pos;
                 break;
             }
             case BOOL:
-                gc.draw_text_at_cursor(a().getp32()?u8"true"s:u8"false"s,pos,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(a().getp32()?u8"true"s:u8"false"s,pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
             case UINT32:
-                gc.draw_text_at_cursor(cppp::format<u8"{}"_ts>(a().getp32()),pos,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"{}"_ts>(a().getp32()),pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
-                gc.draw_text_at_cursor(u8"dw"sv,pos,0.5f,GRAY);
+                gc.draw_wrapped_text_at_cursor(u8"dw"sv,pos,right,left,0.5f,GRAY);
                 break;
             case SINT32:
-                gc.draw_text_at_cursor(cppp::format<u8"{}"_ts>(std::bit_cast<std::int32_t>(a().getp32())),pos,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"{}"_ts>(std::bit_cast<std::int32_t>(a().getp32())),pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
-                gc.draw_text_at_cursor(u8"sdw"sv,pos,0.5f,GRAY);
+                gc.draw_wrapped_text_at_cursor(u8"sdw"sv,pos,right,left,0.5f,GRAY);
                 break;
             case CALL_BUILTIN:
                 switch(a().getp32()){
                     case 0:
-                        _children[0uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
-                        gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
-                        _children[1uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
-                        gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
+                        _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                        gc.draw_wrapped_text_at_cursor(u8"("sv,pos,right,left,1.0f,WHITE);
+                        _children[1uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                        gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
                         break;
                     case 10:
-                        draw_binop(u8"+"sv,_children,gc,errors,names,cursor,pos,indentation,apriority(),altmode);
+                        draw_binop(u8"+"sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
                         break;
                     case 20:
-                        draw_binop(u8"-"sv,_children,gc,errors,names,cursor,pos,indentation,apriority(),altmode);
+                        draw_binop(u8"-"sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
                         break;
                     case 30:
-                        draw_binop(u8"*"sv,_children,gc,errors,names,cursor,pos,indentation,apriority(),altmode);
+                        draw_binop(u8"*"sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
                         break;
                     case 50:
-                        draw_binop(u8"="sv,_children,gc,errors,names,cursor,pos,indentation,apriority(),altmode);
+                        draw_binop(u8"="sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
                         break;
                     case 51:
-                        draw_binop(u8"<="sv,_children,gc,errors,names,cursor,pos,indentation,apriority(),altmode);
+                        draw_binop(u8"<="sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
                         break;
                     case 60:
-                        gc.draw_text_at_cursor(u8"!"s,pos,1.0f,WHITE);
-                        draw_operand(_children.front(),gc,errors,names,cursor,pos,indentation,apriority(),altmode);
+                        gc.draw_wrapped_text_at_cursor(u8"!"s,pos,right,left,1.0f,WHITE);
+                        draw_operand(_children.front(),gc,errors,names,cursor,pos,right,left,apriority(),altmode);
                         break;
                     case 100:
-                        gc.draw_text_at_cursor(u8"print("sv,pos,1.0f,WHITE);
-                        _children.front().adraw(gc,errors,names,cursor,pos,indentation,altmode);
-                        gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
+                        gc.draw_wrapped_text_at_cursor(u8"print("sv,pos,right,left,1.0f,WHITE);
+                        _children.front().adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                        gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
                         break;
                     default:
-                        gc.draw_text_at_cursor(cppp::format<u8"BUILTIN[{}]("_ts>(a().getp32()),pos,1.0f,WHITE);
+                        gc.draw_wrapped_text_at_cursor(cppp::format<u8"BUILTIN[{}]("_ts>(a().getp32()),pos,right,left,1.0f,WHITE);
                         for(std::uint32_t i=0;i<_children.size();++i){
-                            if(i) gc.draw_text_at_cursor(u8","sv,pos,1.0f,WHITE);
-                            _children[i].adraw(gc,errors,names,cursor,pos,indentation,altmode);
+                            if(i) gc.draw_wrapped_text_at_cursor(u8","sv,pos,right,left,1.0f,WHITE);
+                            _children[i].adraw(gc,errors,names,cursor,pos,right,left,altmode);
                         }
-                        gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
+                        gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
                         break;
                 }
                 cursor_pos = pos;
                 break;
             case PACK:
-                gc.draw_text_at_cursor(u8"("sv,pos,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(u8"("sv,pos,right,left,1.0f,WHITE);
                 for(std::uint32_t i=0;i<_children.size();++i){
-                    if(i) gc.draw_text_at_cursor(u8","sv,pos,1.0f,WHITE);
-                    _children[i].adraw(gc,errors,names,cursor,pos,indentation,altmode);
+                    if(i) gc.draw_wrapped_text_at_cursor(u8","sv,pos,right,left,1.0f,WHITE);
+                    _children[i].adraw(gc,errors,names,cursor,pos,right,left,altmode);
                 }
-                gc.draw_text_at_cursor(u8")"sv,pos,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
             case COMMA: {
-                gc.draw_text_at_cursor(u8"{"sv,pos,1.0f,WHITE);
-                float inner_indentation = indentation + 4 * gc.charadvance();
+                gc.draw_wrapped_text_at_cursor(u8"{"sv,pos,right,left,1.0f,WHITE);
+                float inner_indentation = left + 4 * gc.charadvance();
                 for(std::uint32_t i=0;i<_children.size();++i){
                     pos.x() = inner_indentation;
                     pos.y() += gc.line_height();
                     if(i == a().getp32()) gc.draw_text_at_cursor(u8"·"sv,cppp::rtl<cppp::fvec2>(auto(pos - cppp::fvec2{gc.charadvance() * 2.0f,0.0f})),1.0f,HIGHLIGHT);
-                    _children[i].adraw(gc,errors,names,cursor,pos,inner_indentation,altmode);
-                    gc.draw_text_at_cursor(u8";"sv,pos,1.0f,WHITE);
+                    _children[i].adraw(gc,errors,names,cursor,pos,right,inner_indentation,altmode);
+                    gc.draw_wrapped_text_at_cursor(u8";"sv,pos,right,left,1.0f,WHITE);
                 }
-                pos.x() = indentation;
+                pos.x() = left;
                 pos.y() += gc.line_height();
-                gc.draw_text_at_cursor(u8"}"sv,pos,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(u8"}"sv,pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
             }
             case PACKIND:
-                _children[0uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
-                gc.draw_text_at_cursor(cppp::format<u8"[{}]"_ts>(a().getp32()),pos,1.0f,WHITE);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"[{}]"_ts>(a().getp32()),pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
             case FORK:
-                _children[0uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
-                gc.draw_text_at_cursor(u8"?"sv,pos,1.0f,RED);
-                _children[1uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
-                gc.draw_text_at_cursor(u8":"sv,pos,1.0f,RED);
-                _children[2uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                gc.draw_wrapped_text_at_cursor(u8"?"sv,pos,right,left,1.0f,RED);
+                _children[1uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                gc.draw_wrapped_text_at_cursor(u8":"sv,pos,right,left,1.0f,RED);
+                _children[2uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
                 cursor_pos = pos;
                 break;
             case NTYPE:
-                gc.draw_text_at_cursor(u8"_"sv,pos,1.0f,selected?RED:WHITE);
+                gc.draw_wrapped_text_at_cursor(u8"_"sv,pos,right,left,1.0f,selected?RED:WHITE);
                 goto anodrawsel;
             case HAVEVAR:
-                gc.draw_text_at_cursor(cppp::format<u8"let var#{}"_ts>(a().getp32()),pos,1.0f,WHITE);
-                gc.draw_text_at_cursor(u8" = "sv,pos,1.0f,RED);
-                _children[0uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
-                gc.draw_text_at_cursor(u8" in "sv,pos,1.0f,WHITE);
-                _children[1uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"let var#{}"_ts>(a().getp32()),pos,right,left,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(u8" = "sv,pos,right,left,1.0f,RED);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                gc.draw_wrapped_text_at_cursor(u8" in "sv,pos,right,left,1.0f,WHITE);
+                _children[1uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
                 cursor_pos = pos;
                 break;
             case GETVAR:
-                gc.draw_text_at_cursor(cppp::format<u8"var#{}"_ts>(a().getp32()),pos,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"var#{}"_ts>(a().getp32()),pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
             case SETVAR:
-                gc.draw_text_at_cursor(cppp::format<u8"let var#{}"_ts>(a().getp32()),pos,1.0f,WHITE);
-                gc.draw_text_at_cursor(u8" = "sv,pos,1.0f,RED);
-                _children[0uz].adraw(gc,errors,names,cursor,pos,indentation,altmode);
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"let var#{}"_ts>(a().getp32()),pos,right,left,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(u8" = "sv,pos,right,left,1.0f,RED);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
                 cursor_pos = pos;
                 break;
             case UINT32SYM:
             case UINT64:
                 // TODO
-                gc.draw_text_at_cursor(cppp::format<u8"**unimplemented: {}**"_ts>(std::to_underlying(a().type())),pos,1.0f,selected?RED:WHITE);
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"**unimplemented: {}**"_ts>(std::to_underlying(a().type())),pos,right,left,1.0f,selected?RED:WHITE);
                 break;
             case IMPORT_STUB:
-                gc.draw_text_at_cursor(u8"(extern)"s,pos,1.0f,WHITE);
+                gc.draw_wrapped_text_at_cursor(u8"(extern)"s,pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
         }
@@ -220,7 +220,7 @@ namespace sfe{
             right_x = line_1.x();
         }
         pos += cppp::fvec2(gc.charadvance()*4.0f,gc.line_height());
-        _children.front().adraw(gc,errors,names,cursor,pos,pos.x(),altmode);
+        _children.front().adraw(gc,errors,names,cursor,pos,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
         
         if(&cursor.selected() == this){
             float bottom_y = pos.y() - gc.descender();
