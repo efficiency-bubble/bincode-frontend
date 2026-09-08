@@ -204,10 +204,13 @@ int main(){
     ed.add_command(u8"interpret code"s,SDLK_F5,{sfe::commands::interpret,&edb});
     fn.recalculate_types(proj.entities(),edb);
     
-    const float SCROLL_SENSITIVITY = 1.0f * ed.graphics_context().line_height();
+    const float SCROLL_SENSITIVITY = 1.0f;
+    const float ZOOM_SENSITIVITY = 0.3f;
+    const float MIN_ZOOM = 0.05f;
     float y_scroll = 0.0f;
     
     while(true){
+        const bool* keys = SDL_GetKeyboardState(nullptr);
         for(const auto& e : sgl::events()){
             switch(e.type){
                 case SDL_EVENT_QUIT: goto cleanup;
@@ -237,11 +240,16 @@ int main(){
                     break;
                 }
                 case SDL_EVENT_MOUSE_WHEEL:
-                    y_scroll = std::max(y_scroll - e.wheel.y * SCROLL_SENSITIVITY,0.0f);
+                    if(keys[SDL_SCANCODE_LCTRL]){
+                        float fact = std::max(std::exp(e.wheel.y * ZOOM_SENSITIVITY),MIN_ZOOM / ed.graphics_context().get_zoom());
+                        ed.graphics_context().set_zoom(ed.graphics_context().get_zoom() * fact);
+                        y_scroll *= fact;
+                    }else{
+                        y_scroll = std::max(y_scroll - e.wheel.y * SCROLL_SENSITIVITY * ed.graphics_context().line_height(),0.0f);
+                    }
                     break;
             }
         }
-        const bool* keys = SDL_GetKeyboardState(nullptr);
         if(ed.color_picker().is_open()){
             cppp::fvec3 hsv = ed.color_picker().get_hsv();
             hsv.x() += (keys[SDL_SCANCODE_LSHIFT]-keys[SDL_SCANCODE_LCTRL]) * 0.02f;

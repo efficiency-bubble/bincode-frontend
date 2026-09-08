@@ -40,9 +40,9 @@ namespace sfe{
         
         pos.y() += ascender;
         for(std::size_t i=0uz;i<candidates.size();++i){
+            pos.y() += line_height;
             gc.rect(pos - cppp::fvec2(0.0f,ascender),cppp::fvec2{width,row_height},i==selection?WHITE:COMPAL_COLOR);
             gc.draw_wrapped_text_at_cursor(candidates[i]->first,pos,right,left,text_scale,i==selection?BLACK:WHITE);
-            pos.y() += line_height;
             pos.x() = left;
         }
     }

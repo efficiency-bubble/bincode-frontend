@@ -88,6 +88,12 @@ namespace sfe{
             float descender() const{
                 return scale*cf.font().descender_px();
             }
+            float get_zoom() const{
+                return scale;
+            }
+            void set_zoom(float zm){
+                scale = zm;
+            }
             float charadvance(char8_t forchar=u8'0') const{
                 return scale*static_cast<float>(cf.query(cf.font().char_to_glyph_id(forchar)).advance())/64.0f;
             }
