@@ -1,4 +1,5 @@
 #include<sfe/builtin-commands.hpp>
+#include<sfe/achievements.hpp>
 #include<cppp/static-functor.hpp>
 #include<bbe/targets/x86.hpp>
 #include<bbe/formats/elf.hpp>
@@ -201,7 +202,15 @@ namespace sfe::commands{
             }
         }
     }
-    void gc(Window& ed,void*){
+    void gc(Window& ed,void*
+    #ifdef SFE_ENABLE_ACHIEVEMENTS
+        adb
+    #endif
+    ){
         ed.project().names().garbage_collect(ed.project().entities().garbage_collect());
+        #ifdef SFE_ENABLE_ACHIEVEMENTS
+        AchievementDB& d = *static_cast<AchievementDB*>(adb);
+        d.queue.complete(d.garbage_collected);
+        #endif
     }
 }

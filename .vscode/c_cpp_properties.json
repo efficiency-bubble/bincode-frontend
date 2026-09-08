@@ -8,7 +8,10 @@
                 "/usr/include/freetype2",
                 "${default}"
             ],
-            "intelliSenseMode": "${default}"
+            "intelliSenseMode": "${default}",
+            "defines": [
+                "SFE_ENABLE_ACHIEVEMENTS="
+            ]
         }
     ],
     "version": 4

@@ -2,6 +2,7 @@
 #include<sfe/editor.hpp>
 #include<sfe/style.hpp>
 #include<sfe/builtin-commands.hpp>
+#include<sfe/achievements.hpp>
 #include<cppp/format.hpp>
 #include<cppp/int.hpp>
 #include<sgl/sgl.hpp>
@@ -177,6 +178,10 @@ int main(){
     SDL_SetHint(SDL_HINT_INVALID_PARAM_CHECKS,"1");
     SDL_SetAppMetadata("edBCC (SGL)",nullptr,"edbcc.cpp");
     SDL_InitSubSystem(SDL_INIT_VIDEO);
+    
+    #ifdef SFE_ENABLE_ACHIEVEMENTS
+    sfe::AchievementDB adb;
+    #endif
 
     { // scope for all GL objects. Their dtors must run before we destroy everything with SDL_Quit().
     sfe::Window ed{proj,{u8"edBCC (SGL)"s,1200,600,SDL_WINDOW_RESIZABLE|SDL_WINDOW_HIGH_PIXEL_DENSITY},proj.entities(),{code_font(),{1200.0f,600.0f},1.0f}};
@@ -197,7 +202,13 @@ int main(){
     ed.add_command({sfe::KeyModifiers::CTRL,SDLK_DOWN},{sfe::commands::adjc,nullptr});
     ed.add_command(u8"reset cursor"s,SDLK_F8,sfe::commands::reset_cursor);
     ed.add_command(u8"inline function"s,sfe::commands::inline_function);
-    ed.add_command(u8"garbage collect type database"s,sfe::commands::gc);
+    ed.add_command(u8"garbage collect type database"s,{sfe::commands::gc,
+    #ifdef SFE_ENABLE_ACHIEVEMENTS
+        &adb
+    #else
+        nullptr
+    #endif
+    });
     ed.add_command(u8"exit"s,sfe::commands::quit);
     ed.add_command(u8"debug selection"s,SDLK_F7,sfe::commands::debug_selection);
     ed.add_command(u8"compile code for x86"s,SDLK_F6,{sfe::commands::compile_and_run,&edb});
@@ -275,6 +286,9 @@ int main(){
             ed.graphics_context().draw_text(proj.names().display_type_name(proj.entities().types().getopt(an.result_type())),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(an.result_type(),proj.entities().types()));
         }
         ed.render_overlay();
+        #ifdef SFE_ENABLE_ACHIEVEMENTS
+        adb.queue.render(ed.graphics_context(),{10.0f,10.0f});
+        #endif
         ed.system_window().flip();
     }
     }
