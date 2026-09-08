@@ -39,7 +39,7 @@ namespace sfe{
                 for(auto it=dtnames.begin();it!=end;){
                     name_map_t<bbe::type_id>::node_type node{dtnames.extract(it)};
                     const bbe::TypeInfo& type = swp.query(node.key());
-                    if(type.marked()){
+                    if(swp.is_marked(type)){
                         node.key() = type.index();
                         dtnames.insert(std::move(node));
                     }
