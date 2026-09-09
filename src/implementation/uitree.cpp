@@ -57,6 +57,16 @@ namespace sfe{
                 gc.draw_wrapped_text_at_cursor(u8"arg"sv,pos,right,left,0.75f,WHITE);
                 cursor_pos = pos;
                 break;
+            case DEREF:
+                gc.draw_wrapped_text_at_cursor(u8"*"sv,pos,right,left,1.0f,WHITE);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                cursor_pos = pos;
+                break;
+            case ADDROF:
+                gc.draw_wrapped_text_at_cursor(u8"&"sv,pos,right,left,1.0f,WHITE);
+                _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                cursor_pos = pos;
+                break;
             case FNSYM: {
                 if(auto fname = names.optget_function_name(a().getp32())){
                     gc.draw_wrapped_text_at_cursor(fname->identifier(),pos,right,left,1.0f,fname->color());

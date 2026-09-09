@@ -30,6 +30,8 @@ namespace sfe{
                 const bbe::FunctionSignature& sig = ti->function_signature();
                 return cppp::format<u8"{} => {}"_ts>(display_type_name(sig.parameter()),display_type_name(sig.return_type()));
             }
+            case POINTER:
+                return cppp::format<u8"P[{}]"_ts>(display_type_name(&ti->pointee()));
             case PACK:
                 // https://marralesfios.github.io/blog/nrvo
                 return [&]{

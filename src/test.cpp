@@ -158,6 +158,8 @@ int main(){
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_3},{bbe::NodeType::CALL_BUILTIN,100,1});
     kc.register_key(SDLK_COMMA,{bbe::NodeType::COMMA,0,2});
     kc.register_key(SDLK_LEFTBRACKET,{bbe::NodeType::PACKIND,0,1});
+    kc.register_key(SDLK_8,{bbe::NodeType::DEREF,0,1});
+    kc.register_key(SDLK_7,{bbe::NodeType::ADDROF,0,1});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_SLASH},{bbe::NodeType::FORK,0,3});
     
     kc.register_node(SDLK_A,{bbe::NodeType::ARG,0,0});
