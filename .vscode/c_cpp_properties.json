@@ -9,9 +9,7 @@
                 "${default}"
             ],
             "intelliSenseMode": "${default}",
-            "defines": [
-                "SFE_ENABLE_ACHIEVEMENTS="
-            ]
+            "defines": []
         }
     ],
     "version": 4
