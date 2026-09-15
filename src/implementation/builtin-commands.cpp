@@ -207,9 +207,9 @@ namespace sfe::commands{
         adb
     #endif
     ){
-        bbe::LinearMovingGarbageCollectedPool<bbe::TypeInfo>::Sweeper swp{ed.project().entities().garbage_collect()};
+        bbe::TypeSweeper swp{ed.project().entities().begin_gc()};
         ed.project().names().garbage_collect(swp);
-        ed.project().entities().types().trace_compounds(std::move(swp));
+        ed.project().entities().end_gc(std::move(swp));
         #ifdef SFE_ENABLE_ACHIEVEMENTS
         AchievementDB& d = *static_cast<AchievementDB*>(adb);
         d.queue.complete(d.garbage_collected);

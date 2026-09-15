@@ -27,21 +27,38 @@ namespace sfe{
             }
     };
     class NameDatabase{
-        template<typename Kt>
-        using name_map_t = std::unordered_map<Kt,Name>;
-        name_map_t<bbe::func_id> fnames;
-        name_map_t<bbe::type_id> dtnames;
+        struct eq_mtk{
+            bool operator()(bbe::MutableTypeKey tr,bbe::MutableTypeKey tr2) const{
+                return tr == tr2;
+            }
+            bool operator()(bbe::MutableTypeKey tr,const bbe::TypeInfo& ti) const{
+                return tr.get() == &ti;
+            }
+            using is_transparent = void;
+        };
+        struct hash_mtk{
+            constexpr std::size_t operator()(bbe::MutableTypeKey r) const noexcept{
+                return static_cast<std::size_t>(r->hash().value());
+            }
+            constexpr std::size_t operator()(const bbe::TypeInfo& i) const noexcept{
+                return static_cast<std::size_t>(i.hash().value());
+            }
+            using is_transparent = void;
+        };
+        std::unordered_map<bbe::func_id,Name> fnames;
+        std::unordered_map<bbe::MutableTypeKey,Name,hash_mtk,eq_mtk> dtnames;
         public:
             NameDatabase() = default;
             NameDatabase(cppp::frozen_byte_view&);
-            void garbage_collect(const bbe::LinearMovingGarbageCollectedPool<bbe::TypeInfo>::Sweeper& swp){
-                const auto end = dtnames.end();
-                for(auto it=dtnames.begin();it!=end;){
-                    name_map_t<bbe::type_id>::node_type node{dtnames.extract(it)};
-                    const bbe::TypeInfo& type = swp.query(node.key());
-                    if(swp.is_marked(type)){
-                        node.key() = type.index();
-                        dtnames.insert(std::move(node));
+            void garbage_collect(const bbe::TypeSweeper& swp){
+                auto it = dtnames.begin();
+                const auto done = dtnames.end();
+                while(it != done){
+                    if(swp.is_marked(*it->first)){
+                        it->first.update(swp);
+                        ++it;
+                    }else{
+                        it = dtnames.erase(it);
                     }
                 }
             }
@@ -58,8 +75,8 @@ namespace sfe{
                 return fnames.at(fid);
             }
             std::optional<const Name&> optget_function_name(bbe::func_id fid) const;
-            const Name& get_defined_type_name(bbe::type_id tid) const{
-                return dtnames.at(tid);
+            const Name& get_defined_type_name(const bbe::TypeInfo& t) const{
+                return dtnames.at(t);
             }
             cppp::str display_type_name(const bbe::TypeInfo* ti) const;
             void serialize(cppp::bytes&,const bbe::SCM&) const;

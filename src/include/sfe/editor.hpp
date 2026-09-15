@@ -140,7 +140,7 @@ namespace sfe{
         Textbox textbox;
         cppp::str preedit;
         public:
-            Window(Project& proj,sgl::Window&& w,VisualNode&& root,GraphicsContext&& gc) : pr(&proj), w(std::move(w)), ce(std::move(root)), gc(std::move(gc)), cp(cs){}
+            Window(Project& pr,cppp::uvec2 sd,sgl::CachedFont&& f,float scale) : pr(&pr), w(u8"edBCC (SGL)"s,sd.x(),sd.y(),SDL_WINDOW_RESIZABLE|SDL_WINDOW_HIGH_PIXEL_DENSITY), ce(pr.entities()), gc(cppp::fvec2(sd)/w.display_scale(),std::move(f),scale), cp(cs){}
             void set_textbox(cppp::uvec3 area,float size,TextboxTargetType tt,void* target){
                 if(!textbox){
                     SDL_StartTextInput(w.native_handle());

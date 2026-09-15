@@ -29,9 +29,9 @@ namespace sfe{
         sgl::MonochromeRectDrawer mrd;
         float scale;
         public:
-            GraphicsContext(sgl::CachedFont&& f,sgl::CoordinateMap cm,float scale) : cf(std::move(f)), cm(cm), scale(scale){}
-            void update_window(float w,float h){
-                cm.update(w,h);
+            GraphicsContext(cppp::fvec2 ws,sgl::CachedFont&& f,float scale) : cf(std::move(f)), cm(ws), scale(scale){}
+            void update_window(cppp::fvec2 ws){
+                cm.update(ws);
             }
             void draw_wrapped_text_at_cursor(cppp::sv text,cppp::fvec2& pos,float right,float left,float sca,cppp::fvec4 color) const{
                 tr.draw_wrapped_text(text,pos,right,left,line_height()*sca,scale*sca,color,cf,cm);

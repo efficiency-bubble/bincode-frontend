@@ -45,7 +45,7 @@ namespace sfe{
                     return name;
                 }();
             default:
-                if(auto it=dtnames.find(ti->index());it!=dtnames.end()){
+                if(auto it=dtnames.find(*ti);it!=dtnames.end()){
                     return it->second.identifier();
                 }else{
                     return cppp::format<u8"[unknown type {}]"_ts>(ti->index());
