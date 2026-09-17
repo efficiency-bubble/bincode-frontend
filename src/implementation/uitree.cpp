@@ -26,7 +26,6 @@ namespace sfe{
         draw_operand(children[1uz],gc,errors,names,cursor,pos,right,left,my_priority+1,altmode);
     }
     std::uint32_t VisualNode::apriority() const{
-        assert_a();
         switch(a().type()){
             case bbe::NodeType::CALL_BUILTIN:
                 switch(a().getp32()){
@@ -47,7 +46,6 @@ namespace sfe{
         return 1984;
     }
     void VisualNode::adraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,bool altmode) const{
-        assert_a();
         cppp::fvec2 start_pos = pos;
         cppp::fvec2 cursor_pos;
         bool selected = (&cursor.selected() == this);
@@ -216,8 +214,43 @@ namespace sfe{
             gc.line(start_pos-cppp::fvec2(0.0f,gc.descender()+gc.line_height()/2.0f),RED,pos-cppp::fvec2(0.0f,gc.descender()+gc.line_height()/2.0f),RED);
         }
     }
+    
+    void VisualNode::tdraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,bool altmode) const{
+        cppp::fvec2 start_pos = pos;
+        cppp::fvec2 cursor_pos;
+        bool selected = (&cursor.selected() == this);
+        // TODO
+        static_cast<void>(names),static_cast<void>(altmode);
+        switch(t().tag()){
+            case MutableTypeSpecType::NONE:
+                gc.draw_wrapped_text_at_cursor(u8"_"sv,pos,right,left,1.0f,selected?RED:WHITE);
+                goto anodrawsel;
+            case MutableTypeSpecType::DTYPE: {
+                const Name& dtn{names.get_defined_type_name(*t().get<MutableTypeSpecType::DTYPE>())};
+                gc.draw_wrapped_text_at_cursor(dtn.identifier(),pos,right,left,1.0f,dtn.color());
+                cursor_pos = pos;
+                break;
+            }
+            default:
+                gc.draw_wrapped_text_at_cursor(u8"/* unimplemented */"s,pos,right,left,1.0f,WHITE);
+                cursor_pos = pos;
+                break;
+        }
+        if(selected){
+            if(cursor.is_after()){
+                gc.line(start_pos-cppp::fvec2(0.0f,gc.ascender()),CURSOR_ACCENT_WEAK,start_pos-cppp::fvec2(0.0f,gc.descender()),CURSOR_ACCENT_WEAK);
+                gc.line(cursor_pos-cppp::fvec2(0.0f,gc.ascender()),CURSOR_ACCENT_1,cursor_pos-cppp::fvec2(0.0f,gc.descender()),CURSOR_ACCENT_2);
+            }else{
+                gc.line(start_pos-cppp::fvec2(0.0f,gc.ascender()),CURSOR_ACCENT_1,start_pos-cppp::fvec2(0.0f,gc.descender()),CURSOR_ACCENT_2);
+                gc.line(cursor_pos-cppp::fvec2(0.0f,gc.ascender()),CURSOR_ACCENT_WEAK,cursor_pos-cppp::fvec2(0.0f,gc.descender()),CURSOR_ACCENT_WEAK);
+            }
+        }
+        anodrawsel:
+        if(!errors.query(&a()).empty()){
+            gc.line(start_pos-cppp::fvec2(0.0f,gc.descender()+gc.line_height()/2.0f),RED,pos-cppp::fvec2(0.0f,gc.descender()+gc.line_height()/2.0f),RED);
+        }
+    }
     void VisualNode::fdraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,bool altmode) const{
-        assert_f();
         float top_y = pos.y()-gc.ascender();
         float left_x = pos.x();
         float right_x;
@@ -226,11 +259,15 @@ namespace sfe{
             const auto& fn = names.get_function_name(f().index());
             gc.draw_text_at_cursor(fn.identifier(),line_1,1.0f,fn.color());
             gc.draw_text_at_cursor(f().cname(),line_1,0.45f,GRAY);
-            gc.draw_text_at_cursor(cppp::format<u8"({}) -> {}:"_ts>(names.display_type_name(f().signature().parameter()),names.display_type_name(f().signature().return_type())),line_1,1.0f,WHITE);
+            gc.draw_text_at_cursor(u8"("sv,line_1,1.0f,WHITE);
+            _children[0uz].tdraw(gc,errors,names,cursor,line_1,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
+            gc.draw_text_at_cursor(u8") -> "sv,line_1,1.0f,WHITE);
+            _children[1uz].tdraw(gc,errors,names,cursor,line_1,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
+            gc.draw_text_at_cursor(u8":"sv,line_1,1.0f,WHITE);
             right_x = line_1.x();
         }
         pos += cppp::fvec2(gc.charadvance()*4.0f,gc.line_height());
-        _children.front().adraw(gc,errors,names,cursor,pos,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
+        _children[2uz].adraw(gc,errors,names,cursor,pos,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
         
         if(&cursor.selected() == this){
             float bottom_y = pos.y() - gc.descender();
@@ -239,7 +276,7 @@ namespace sfe{
         }
     }
     void VisualNode::pdraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,bool altmode) const{
-        assert_p();
+        CPPP_ASSERT(data.tag() == sfe::VisualNodeType::P);
         float left_x = pos.x();
         for(const auto& ch : _children){
             ch.fdraw(gc,errors,names,cursor,pos,altmode);

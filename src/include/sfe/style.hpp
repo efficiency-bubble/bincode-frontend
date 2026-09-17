@@ -65,8 +65,8 @@ namespace sfe{
             void name_function(bbe::func_id fid,Name n){
                 fnames.try_emplace(fid,std::move(n));
             }
-            void name_defined_type(bbe::type_id tid,Name n){
-                fnames.try_emplace(tid,std::move(n));
+            void name_defined_type(const bbe::TypeInfo& ti,Name n){
+                dtnames.try_emplace(ti,std::move(n));
             }
             const Name& get_function_name(bbe::func_id fid) const{
                 return fnames.at(fid);
@@ -78,7 +78,7 @@ namespace sfe{
             const Name& get_defined_type_name(const bbe::TypeInfo& t) const{
                 return dtnames.at(t);
             }
-            cppp::str display_type_name(const bbe::TypeInfo* ti) const;
+            cppp::str display_type_name(const bbe::TypeInfo& ti) const;
             void serialize(cppp::bytes&,const bbe::SCM&) const;
     };
 }

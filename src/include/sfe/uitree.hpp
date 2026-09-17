@@ -2,6 +2,7 @@
 #include<cppp/type-erasure.hpp>
 #include<bbe/project_entity_pool.hpp>
 #include<bbe/function.hpp>
+#include<cppp/variant.hpp>
 #include<bbe/ast.hpp>
 #include<type_traits>
 #include<concepts>
@@ -11,33 +12,117 @@
 #include"graphics.hpp"
 #include"style.hpp"
 namespace sfe{
-    enum class VisualNodeType{
-        A,F,P
+    #ifdef __INTELLISENSE__
+    #define SFE_ANNOT(t)
+    #else
+    // GCC please stop doing this to me
+    // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127427
+    #define SFE_ANNOT(t) [[=^^std::type_identity_t<t>]]
+    #endif
+    class MutableTypeSpec;
+    class MutableSigSpec;
+    enum class MutableTypeSpecType{
+        NONE,
+        DTYPE SFE_ANNOT(const bbe::TypeInfo*),
+        PACK SFE_ANNOT(cppp::fixed_array<MutableTypeSpec>),
+        SIG SFE_ANNOT(MutableSigSpec),
+        PTR SFE_ANNOT(MutableTypeSpec)
     };
+    class MutableTypeSpec{
+        cppp::heap_variant<MutableTypeSpecType> data;
+        public:
+            MutableTypeSpec(const bbe::TypeInfo& inf){
+                load(inf);
+            }
+            inline void load(const bbe::TypeInfo&);
+            template<MutableTypeSpecType t>
+            cppp::heap_variant<MutableTypeSpecType>::lookup<t>& get(){
+                return data.get<t>();
+            }
+            template<MutableTypeSpecType t>
+            const cppp::heap_variant<MutableTypeSpecType>::lookup<t>& get() const{
+                return data.get<t>();
+            }
+            MutableTypeSpecType tag() const{
+                return data.tag();
+            }
+    };
+    class MutableSigSpec{
+        MutableTypeSpec ret;
+        MutableTypeSpec par;
+        public:
+            MutableSigSpec(MutableTypeSpec&& r,MutableTypeSpec&& p) : ret(std::move(r)), par(std::move(p)){}
+    };
+    inline void MutableTypeSpec::load(const bbe::TypeInfo& ti){
+        switch(ti.type()){
+            case bbe::TypeCategory::PACK: {
+                const auto& pack = ti.pack_contents();
+                cppp::uninitialized_memory<MutableTypeSpec> children{pack.size()};
+                std::size_t i = 0uz;
+                try{
+                    for(;i<pack.size();++i){
+                        children.emplace_at(i,pack[i]);
+                    }
+                }catch(...){
+                    while(i--){
+                        children.destroy_at(i);
+                    }
+                    throw;
+                }
+                data.emplace<MutableTypeSpecType::PACK>(std::move(children));
+                break;
+            }
+            case bbe::TypeCategory::VOID:
+            case bbe::TypeCategory::SIGNED_INTEGRAL:
+            case bbe::TypeCategory::UNSIGNED_INTEGRAL:
+                data.emplace<MutableTypeSpecType::DTYPE>(&ti);
+                break;
+            case bbe::TypeCategory::FUNCTION_POINTER:
+                data.emplace<MutableTypeSpecType::SIG>(ti.function_signature().return_type(),ti.function_signature().parameter());
+                break;
+            case bbe::TypeCategory::POINTER:
+                data.emplace<MutableTypeSpecType::PTR>(ti);
+                break;
+        }
+    }
+    enum class VisualNodeType{
+        A SFE_ANNOT(bbe::ASTNode*),
+        F SFE_ANNOT(bbe::Function*),
+        P SFE_ANNOT(bbe::ProjectEntitiesPool*),
+        T SFE_ANNOT(MutableTypeSpec)
+    };
+    struct vn_from_mss_t{} constexpr inline vn_from_mss;
     class UICursor;
     class VisualNode{
         std::vector<VisualNode> _children;
-        void* nd;
-        VisualNodeType _type;
+        cppp::variant<VisualNodeType> data;
         friend void swap(VisualNode& lhs,VisualNode& rhs){
             std::ranges::swap(lhs._children,rhs._children);
-            std::ranges::swap(lhs.nd,rhs.nd);
+            std::ranges::swap(lhs.data,rhs.data);
         }
         struct no_populate_t{};
         public:
             constexpr static no_populate_t no_populate{};
-            VisualNode(bbe::ASTNode& nd,no_populate_t) : nd(&nd), _type(VisualNodeType::A){}
-            VisualNode(bbe::ASTNode& nd) : nd(&nd), _type(VisualNodeType::A){
+            VisualNode(bbe::ASTNode& nd,no_populate_t) : data(cppp::in_place_etor<VisualNodeType::A>,&nd){}
+            VisualNode(bbe::ASTNode& nd) : VisualNode(nd,no_populate){
                 apopulate();
             }
-            VisualNode(bbe::Function& f) : nd(&f), _type(VisualNodeType::F){
+            VisualNode(bbe::Function& f) : data(cppp::in_place_etor<VisualNodeType::F>,&f){
+                _children.emplace_back(vn_from_mss,f.signature().parameter());
+                _children.emplace_back(vn_from_mss,f.signature().return_type());
                 _children.emplace_back(f.ast());
             }
-            VisualNode(bbe::ProjectEntitiesPool& f) : nd(&f), _type(VisualNodeType::P){
+            VisualNode(bbe::ProjectEntitiesPool& f) : data(cppp::in_place_etor<VisualNodeType::P>,&f){
                 for(bbe::Function& fn : f.functions()){
                     _children.emplace_back(fn);
                 }
             }
+            template<typename ...A>
+            VisualNode(vn_from_mss_t,A&& ...a) : data(cppp::in_place_etor<VisualNodeType::T>,std::forward<A>(a)...){}
+            VisualNode(VisualNode&& other) = default;
+            VisualNode(const VisualNode&) = delete;
+            VisualNode& operator=(VisualNode&& other) = default;
+            VisualNode& operator=(const VisualNode&) = delete;
             const std::vector<VisualNode>& children() const{
                 return _children;
             }
@@ -45,46 +130,38 @@ namespace sfe{
                 return _children;
             }
             void adraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,float right,float left,bool altmode) const;
+            void tdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,float right,float left,bool altmode) const;
             void fdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,bool altmode) const;
             void pdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,bool altmode) const;
-            void repoint(bbe::ASTNode& other){
-                nd = &other;
-            }
             void clear(){
                 _children.clear();
             }
-            void assert_a() const{
-                CPPP_ASSERT(_type == VisualNodeType::A);
-            }
-            void assert_f() const{
-                CPPP_ASSERT(_type == VisualNodeType::F);
-            }
-            void assert_p() const{
-                CPPP_ASSERT(_type == VisualNodeType::P);
+            void arepoint(bbe::ASTNode& other){
+                data.get<VisualNodeType::A>() = &other;
             }
             const bbe::ASTNode& a() const{
-                assert_a();
-                return *static_cast<const bbe::ASTNode*>(nd);
+                return *data.get<VisualNodeType::A>();
             }
             bbe::ASTNode& a(){
-                assert_a();
-                return *static_cast<bbe::ASTNode*>(nd);
+                return *data.get<VisualNodeType::A>();
             }
             const bbe::Function& f() const{
-                assert_f();
-                return *static_cast<const bbe::Function*>(nd);
+                return *data.get<VisualNodeType::F>();
             }
             bbe::Function& f(){
-                assert_f();
-                return *static_cast<bbe::Function*>(nd);
+                return *data.get<VisualNodeType::F>();
             }
             const bbe::ProjectEntitiesPool& p() const{
-                assert_p();
-                return *static_cast<const bbe::ProjectEntitiesPool*>(nd);
+                return *data.get<VisualNodeType::P>();
             }
             bbe::ProjectEntitiesPool& p(){
-                assert_p();
-                return *static_cast<bbe::ProjectEntitiesPool*>(nd);
+                return *data.get<VisualNodeType::P>();
+            }
+            const MutableTypeSpec& t() const{
+                return data.get<VisualNodeType::T>();
+            }
+            MutableTypeSpec& t(){
+                return data.get<VisualNodeType::T>();
             }
             void apopulate(){
                 for(auto& c : a().children()){
@@ -93,7 +170,7 @@ namespace sfe{
             }
             // for lhs stealing
             void apopulate(VisualNode&& vn){
-                assert_a();
+                CPPP_ASSERT(data.tag() == VisualNodeType::A);
                 _children.emplace_back(std::move(vn));
             }
             // for lhs stealing
@@ -102,12 +179,18 @@ namespace sfe{
                     _children.emplace_back(c);
                 }
             }
+            void freloadp(){
+                _children[0uz].t().load(f().signature().parameter());
+            }
+            void freloadr(){
+                _children[1uz].t().load(f().signature().return_type());
+            }
             void paddf(bbe::Function& fn){
-                assert_p();
+                CPPP_ASSERT(data.tag() == VisualNodeType::P);
                 _children.emplace_back(fn);
             }
             void perasef(const bbe::Function& fn){
-                assert_p();
+                CPPP_ASSERT(data.tag() == VisualNodeType::P);
                 #if __cpp_lib_parallel_algorithm >= 202506L
                 #warning GCC updated! change this to use std::ranges::find_if
                 #endif
@@ -117,30 +200,28 @@ namespace sfe{
             }
             std::uint32_t apriority() const;
             void arerender(){
-                assert_a();
                 clear();
                 apopulate();
             }
             void frerender(){
-                assert_f();
+                CPPP_ASSERT(data.tag() == VisualNodeType::F);
                 _children.front().arerender();
             }
             void prepopulate(){
-                assert_p();
                 _children.clear();
                 for(auto& fn : p().functions()){
                     _children.emplace_back(fn);
                 }
             }
             void prerender(){
-                assert_p();
+                CPPP_ASSERT(data.tag() == VisualNodeType::P);
                 for(auto& child : _children) child.frerender();
             }
             bool is_placeholder() const{
-                return _type == VisualNodeType::A && a().type() == bbe::NodeType::NTYPE;
+                return data.tag() == VisualNodeType::A && a().type() == bbe::NodeType::NTYPE;
             }
             VisualNodeType type() const{
-                return _type;
+                return data.tag();
             }
     };
     struct PathEntry{

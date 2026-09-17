@@ -10,6 +10,7 @@ namespace sfe{
             0.0f,0.0f,
             0.0f,1.0f
         };
+        
         vbo.allocate_static(sizeof(data),{},data.data());
         vao.add_buffer(vbo,0,0,2*sizeof(float));
         vao.set_attr<float>(0,0,2,0,false);

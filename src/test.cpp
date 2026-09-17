@@ -94,7 +94,8 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                     }
                     case SDLK_RETURN: {
                         if(bbe::type_id tid=ed.cursor().selected().f().ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
-                            ed.cursor().selected().f().signature().set_return(&proj.entities().types()[tid]);
+                            ed.cursor().selected().f().signature().set_return(proj.entities().types()[tid]);
+                            ed.cursor().selected().freloadr();
                         }
                         break;
                     }
@@ -107,7 +108,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                 switch(ke.key()){
                     case SDLK_RETURN: {
                         const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
-                        bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{&b_uint32,&b_uint32});
+                        bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32});
                         fn.set_cname(cppp::format<u8"fn{}"_ts>(fn.index()));
                         proj.names().name_function(fn.index(),{u8"_unnamed"s,new_chroma()});
                         ed.root().paddf(fn);
@@ -118,6 +119,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             }
             break;
         }
+        case sfe::VisualNodeType::T: break;
     }
     return false;
 }
@@ -172,8 +174,15 @@ int main(){
     kc.register_node(SDLK_Q,{bbe::NodeType::IMPORT_STUB,0,0});
     kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::PACK,0,1});
     
+    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_VOID],{u8"void"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_BOOL],{u8"bool"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_UINT32],{u8"uint32_t"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_UINT64],{u8"uint64_t"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_INT32],{u8"int32_t"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_INT64],{u8"int64_t"s,sfe::WHITE});
+    
     const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
-    bbe::Function& fn = proj.entities().functions().emplace(u8"example"s,bbe::FunctionSignature{&b_uint32,&b_uint32});
+    bbe::Function& fn = proj.entities().functions().emplace(u8"example"s,bbe::FunctionSignature{b_uint32,b_uint32});
     proj.names().name_function(fn.index(),{u8"testfn"s,new_chroma()});
     fn.ast() = {bbe::NodeType::NTYPE};
     
@@ -286,7 +295,8 @@ int main(){
             for(const auto& em : edb.query(&an)){
                 ed.graphics_context().draw_text(em.reason(),{10.0f,y},DIAG_TEXT_SCALE,{1.0f,0.0f,0.0f});
             }
-            ed.graphics_context().draw_text(proj.names().display_type_name(proj.entities().types().getopt(an.result_type())),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(an.result_type(),proj.entities().types()));
+            bbe::type_id rt = an.result_type();
+            ed.graphics_context().draw_text(rt==bbe::TypeDatabase::T_ERROR?u8"error-type"s:proj.names().display_type_name(proj.entities().types()[rt]),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(rt,proj.entities().types()));
         }
         ed.render_overlay();
         #ifdef SFE_ENABLE_ACHIEVEMENTS

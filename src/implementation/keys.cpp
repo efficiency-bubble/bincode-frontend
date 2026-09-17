@@ -9,12 +9,11 @@ namespace sfe{
         VisualNode old_ui{ui.a(),VisualNode::no_populate};
         std::ranges::swap(old_ui,ui);
         
-        old_ui.repoint(ui.a().children()[0] = std::move(node));
+        old_ui.arepoint(ui.a().children()[0] = std::move(node));
         old_ui.arerender();
         ui.apopulate(std::move(old_ui));
     }
     static void builtin_n_ary(VisualNode& sel,bbe::NodeType nt,std::uint32_t prim,CodeEntry& ed,std::uint32_t arity){
-        sel.assert_a();
         bool second = (arity > 1) && (sel.a().type() != bbe::NodeType::NTYPE);
         steal_lhs(sel,{nt,prim,arity,bbe::null_initialize});
         sel.apopulate_butfirst();

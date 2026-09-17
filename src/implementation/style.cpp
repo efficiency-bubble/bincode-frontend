@@ -10,33 +10,22 @@ namespace sfe{
         }
         return std::nullopt;
     }
-    cppp::str NameDatabase::display_type_name(const bbe::TypeInfo* ti) const{
+    cppp::str NameDatabase::display_type_name(const bbe::TypeInfo& ti) const{
         using namespace cppp::literals;
         using namespace std::literals;
-        if(!ti) return u8"[error-type]"s;
-        switch(ti->type()){
+        switch(ti.type()){
             using enum bbe::TypeCategory;
-            case VOID:
-                return u8"void"s;
-            case SIGNED_INTEGRAL:
-                if(ti->size() == 1){
-                    return u8"bool"s; // TODO: special case bool better
-                }else{
-                    return cppp::format<u8"int{}_t"_ts>(ti->size()*8);
-                }
-            case UNSIGNED_INTEGRAL:
-                return cppp::format<u8"uint{}_t"_ts>(ti->size()*8);
             case FUNCTION_POINTER: {
-                const bbe::FunctionSignature& sig = ti->function_signature();
+                const bbe::FunctionSignature& sig = ti.function_signature();
                 return cppp::format<u8"{} => {}"_ts>(display_type_name(sig.parameter()),display_type_name(sig.return_type()));
             }
             case POINTER:
-                return cppp::format<u8"P[{}]"_ts>(display_type_name(&ti->pointee()));
+                return cppp::format<u8"P[{}]"_ts>(display_type_name(ti.pointee()));
             case PACK:
                 // https://marralesfios.github.io/blog/nrvo
                 return [&]{
                     cppp::str name{u8"pack["s};
-                    for(const bbe::TypeInfo* t : ti->pack_contents().types()){
+                    for(const bbe::TypeInfo& t : ti.pack_contents()){
                         name.append(display_type_name(t));
                         name.append(u8", "sv);
                     }
@@ -45,10 +34,10 @@ namespace sfe{
                     return name;
                 }();
             default:
-                if(auto it=dtnames.find(*ti);it!=dtnames.end()){
+                if(auto it=dtnames.find(ti);it!=dtnames.end()){
                     return it->second.identifier();
                 }else{
-                    return cppp::format<u8"[unknown type {}]"_ts>(ti->index());
+                    return cppp::format<u8"[unknown type {}]"_ts>(ti.index());
                 }
         }
     }
