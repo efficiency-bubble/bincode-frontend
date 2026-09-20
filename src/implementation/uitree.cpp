@@ -215,7 +215,7 @@ namespace sfe{
         }
     }
     
-    void VisualNode::tdraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,bool altmode) const{
+    void VisualNode::tdraw(const GraphicsContext& gc,const bbe::ErrorDatabase&,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,bool altmode) const{
         cppp::fvec2 start_pos = pos;
         cppp::fvec2 cursor_pos;
         bool selected = (&cursor.selected() == this);
@@ -248,9 +248,6 @@ namespace sfe{
             }
         }
         anodrawsel:
-        if(!errors.query(&a()).empty()){
-            gc.line(start_pos-cppp::fvec2(0.0f,gc.descender()+gc.line_height()/2.0f),RED,pos-cppp::fvec2(0.0f,gc.descender()+gc.line_height()/2.0f),RED);
-        }
     }
     void VisualNode::fdraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,bool altmode) const{
         float top_y = pos.y()-gc.ascender();

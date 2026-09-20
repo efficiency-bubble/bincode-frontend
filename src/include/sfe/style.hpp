@@ -49,7 +49,7 @@ namespace sfe{
         std::unordered_map<bbe::MutableTypeKey,Name,hash_mtk,eq_mtk> dtnames;
         public:
             NameDatabase() = default;
-            NameDatabase(cppp::frozen_byte_view&);
+            NameDatabase(const bbe::TypeDatabase&,cppp::frozen_byte_view&);
             void garbage_collect(const bbe::TypeSweeper& swp){
                 auto it = dtnames.begin();
                 const auto done = dtnames.end();

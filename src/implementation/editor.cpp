@@ -1,5 +1,6 @@
 #include<sfe/editor.hpp>
 #include<cppp/format.hpp>
+#include<cppp/int.hpp>
 namespace sfe{
     void CodeEntry::navigate(bool right,bool fast){
         bool nochildren = _cursor.selected().children().empty();
@@ -31,6 +32,7 @@ namespace sfe{
         }
     }
     void CodeEntry::keydown(Keypress kp){
+        using namespace cppp::literals;
         switch(kp.key()){
             case SDLK_LEFT:
             case SDLK_UP:
@@ -49,7 +51,7 @@ namespace sfe{
             case SDLK_BACKSPACE:
                 switch(_cursor.selected().type()){
                     case VisualNodeType::A: {
-                        bbe::ASTNode& an = _cursor.selected().a();
+                        const bbe::ASTNode& an = _cursor.selected().a();
                         if(an.type() == bbe::NodeType::NTYPE){
                             if(_cursor.selected2().type() != VisualNodeType::A){
                                 break; // trying to delete an already-blank root node; do nothing
@@ -58,56 +60,51 @@ namespace sfe{
                             _cursor.leave();
                             _cursor.set_after(false);
                             if(bbe::nchld_of(an.type()) == bbe::VARIABLE){
-                                an.children().erase(ti);
-                                _cursor.selected().popi(ti);
+                                _cursor.selected().aerase(ti);
                                 if(ti) _cursor.enter(ti-1,true);
-                            }else if(an.children().size() == 2){
+                            }else if(_cursor.selected().a().children().size() == 2){
                                 [[assume(ti <= 1)]];
-                                bbe::ASTNode tmp = std::move(_cursor.selected().a().children()[1-ti]);
-                                _cursor.selected().a() = std::move(tmp);
-                                _cursor.selected().arerender();
+                                _cursor.selected().apromote(1_u32-ti);
                             }else{
                                 // can't drop down multiple nodes, just delete them
-                                _cursor.selected().a() = {bbe::NodeType::NTYPE,0};
-                                break;
+                                _cursor.selected().aclear();
                             }
                         }else{
-                            an = {bbe::NodeType::NTYPE,0};
-                            _cursor.selected().arerender();
+                            _cursor.selected().aclear();
                         }
                         break;
                     }
                     case VisualNodeType::T: {
-                        const bbe::TypeInfo*& t = _cursor.selected().t();
-                        if(t){
-                            _cursor.selected().treset();
-                        }else{
-                            if(_cursor.selected2().type() != VisualNodeType::T){
-                                break; // trying to delete an already-blank root node; do nothing
-                            }
-                            std::uint32_t ti = _cursor.index_of_selection();
-                            _cursor.leave();
-                            _cursor.set_after(false);
-                            if(t->type() == bbe::TypeCategory::PACK){
-                                cppp::uninitialized_memory<const bbe::TypeInfo*> np{t->pack_contents().size()-1uz};
-                                auto middle = t->pack_contents().array().begin() + ti;
-                                std::uninitialized_copy(middle+1,t->pack_contents().array().end(),
-                                    std::uninitialized_copy(t->pack_contents().array().begin(),middle,np.data())
-                                );
-                                t = &proj().types().pack_of(std::move(np));
-                                _cursor.selected().popi(ti);
-                                if(ti) _cursor.enter(ti-1,true);
-                            }else if(t->type() == bbe::TypeCategory::FUNCTION_POINTER){
-                                [[assume(ti <= 1)]];
-                                bbe::ASTNode tmp = std::move(_cursor.selected().a().children()[1-ti]);
-                                _cursor.selected().a() = std::move(tmp);
-                                _cursor.selected().arerender();
-                            }else{
-                                // can't drop down multiple nodes, just delete them
-                                _cursor.selected().a() = {bbe::NodeType::NTYPE,0};
-                                break;
-                            }
-                        }
+                        // const bbe::TypeInfo*& t = _cursor.selected().t();
+                        // if(t){
+                        //     _cursor.selected().treset();
+                        // }else{
+                        //     if(_cursor.selected2().type() != VisualNodeType::T){
+                        //         break; // trying to delete an already-blank root node; do nothing
+                        //     }
+                        //     std::uint32_t ti = _cursor.index_of_selection();
+                        //     _cursor.leave();
+                        //     _cursor.set_after(false);
+                        //     if(t->type() == bbe::TypeCategory::PACK){
+                        //         cppp::uninitialized_memory<const bbe::TypeInfo*> np{t->pack_contents().size()-1uz};
+                        //         auto middle = t->pack_contents().array().begin() + ti;
+                        //         std::uninitialized_copy(middle+1,t->pack_contents().array().end(),
+                        //             std::uninitialized_copy(t->pack_contents().array().begin(),middle,np.data())
+                        //         );
+                        //         t = &proj().types().pack_of(std::move(np));
+                        //         _cursor.selected().popi(ti);
+                        //         if(ti) _cursor.enter(ti-1,true);
+                        //     }else if(t->type() == bbe::TypeCategory::FUNCTION_POINTER){
+                        //         [[assume(ti <= 1)]];
+                        //         bbe::ASTNode tmp = std::move(_cursor.selected().a().children()[1-ti]);
+                        //         _cursor.selected().a() = std::move(tmp);
+                        //         _cursor.selected().arerender();
+                        //     }else{
+                        //         // can't drop down multiple nodes, just delete them
+                        //         _cursor.selected().a() = {bbe::NodeType::NTYPE,0};
+                        //         break;
+                        //     }
+                        // }
                         break;
                     }
                     default:;

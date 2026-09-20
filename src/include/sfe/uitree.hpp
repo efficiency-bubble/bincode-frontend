@@ -34,6 +34,29 @@ namespace sfe{
             std::ranges::swap(lhs.data,rhs.data);
         }
         struct no_populate_t{};
+        bbe::ASTNode& m_a(){
+            return *data.get<VisualNodeType::A>();
+        }
+        bbe::Function& m_f(){
+            return *data.get<VisualNodeType::F>();
+        }
+        bbe::ProjectEntitiesPool& m_p(){
+            return *data.get<VisualNodeType::P>();
+        }
+        const bbe::TypeInfo*& m_t(){
+            return data.get<VisualNodeType::T>();
+        }
+        void apopulate(){
+            for(auto& c : m_a().children()){
+                _children.emplace_back(c);
+            }
+        }
+        void apopulate_reusing_first_child(VisualNode&& vn){
+            _children.emplace_back(std::move(vn));
+            for(std::uint32_t i=1;i<m_a().children().size();++i){
+                _children.emplace_back(m_a().children()[i]);
+            }
+        }
         public:
             constexpr static no_populate_t no_populate{};
             VisualNode(bbe::ASTNode& nd,no_populate_t) : data(cppp::in_place_etor<VisualNodeType::A>,&nd){}
@@ -68,55 +91,27 @@ namespace sfe{
             void clear(){
                 _children.clear();
             }
-            void arepoint(bbe::ASTNode& other){
-                data.get<VisualNodeType::A>() = &other;
-            }
             const bbe::ASTNode& a() const{
-                return *data.get<VisualNodeType::A>();
-            }
-            bbe::ASTNode& a(){
                 return *data.get<VisualNodeType::A>();
             }
             const bbe::Function& f() const{
                 return *data.get<VisualNodeType::F>();
             }
-            bbe::Function& f(){
-                return *data.get<VisualNodeType::F>();
+            cppp::str& fcname(){
+                return m_f().cname();
             }
             const bbe::ProjectEntitiesPool& p() const{
-                return *data.get<VisualNodeType::P>();
-            }
-            bbe::ProjectEntitiesPool& p(){
                 return *data.get<VisualNodeType::P>();
             }
             const bbe::TypeInfo* t() const{
                 return data.get<VisualNodeType::T>();
             }
-            const bbe::TypeInfo*& t(){
-                return data.get<VisualNodeType::T>();
-            }
-            void apopulate(){
-                for(auto& c : a().children()){
-                    _children.emplace_back(c);
-                }
-            }
-            // for lhs stealing
-            void apopulate(VisualNode&& vn){
-                CPPP_ASSERT(data.tag() == VisualNodeType::A);
-                _children.emplace_back(std::move(vn));
-            }
-            // for lhs stealing
-            void apopulate_butfirst(){
-                for(auto& c : a().children() | std::views::drop(1uz)){
-                    _children.emplace_back(c);
-                }
-            }
             void treset(){
-                t() = nullptr;
+                m_t() = nullptr;
                 clear();
             }
             void tupdate(const bbe::TypeInfo& inf){
-                t() = &inf;
+                m_t() = &inf;
                 clear();
                 switch(inf.type()){
                     case bbe::TypeCategory::VOID:
@@ -139,17 +134,19 @@ namespace sfe{
             }
             void ftwriteback(){
                 if(const bbe::TypeInfo* at=_children[0uz].t()){
-                    f().signature().set_param(*at);
+                    m_f().signature().set_param(*at);
                 }
                 if(const bbe::TypeInfo* rt=_children[1uz].t()){
-                    f().signature().set_param(*rt);
+                    m_f().signature().set_param(*rt);
                 }
             }
-            void freloadp(){
-                _children[0uz].tupdate(f().signature().parameter());
+            void fsetp(const bbe::TypeInfo& r){
+                m_f().signature().set_param(r);
+                _children[0uz].tupdate(r);
             }
-            void freloadr(){
-                _children[1uz].tupdate(f().signature().return_type());
+            void fsetr(const bbe::TypeInfo& r){
+                m_f().signature().set_return(r);
+                _children[1uz].tupdate(r);
             }
             void paddf(bbe::Function& fn){
                 CPPP_ASSERT(data.tag() == VisualNodeType::P);
@@ -165,26 +162,90 @@ namespace sfe{
                 }));
             }
             std::uint32_t apriority() const;
-            void popi(std::size_t i){
-                _children.erase(_children.begin()+static_cast<std::ptrdiff_t>(i));
+            class ANodeHandle{
+                VisualNode* vn;
+                friend VisualNode;
+                void _destroy(){
+                    if(vn){
+                        vn->clear();
+                        vn->apopulate();
+                    }
+                }
+                public:
+                    ANodeHandle(VisualNode& vn) : vn(&vn){}
+                    bbe::ASTNode& operator*() const{
+                        return vn->m_a();
+                    }
+                    bbe::ASTNode* operator->() const{
+                        return &vn->m_a();
+                    }
+                    bbe::ASTNode& release(){
+                        return std::exchange(vn,nullptr)->m_a();
+                    }
+                    ANodeHandle(const ANodeHandle&) = delete;
+                    ANodeHandle(ANodeHandle&& other) : vn(std::exchange(other.vn,nullptr)){}
+                    ANodeHandle& operator=(const ANodeHandle&) = delete;
+                    ANodeHandle& operator=(ANodeHandle&& other){
+                        VisualNode* tmp = std::exchange(other.vn,nullptr);
+                        _destroy();
+                        vn = tmp;
+                        return *this;
+                    }
+                    ~ANodeHandle(){
+                        _destroy();
+                    }
+            };
+            ANodeHandle amodify(){
+                return *this;
             }
-            void arerender(){
+            void aerase(std::uint32_t i){
+                m_a().children().erase(i);
+                _children.erase(_children.begin()+i);
+            }
+            void ainsert(std::uint32_t i,bbe::ASTNode&& nd){
+                m_a().children().insert(i,std::move(nd));
+                _children.emplace(_children.begin()+i,m_a().children()[i]);
+            }
+            void amoved(bbe::ASTNode& newloc){
+                data.emplace<VisualNodeType::A>(&newloc);
+            }
+            void arepoint(bbe::ASTNode& nd){
+                amoved(nd);
                 clear();
                 apopulate();
             }
-            void frerender(){
-                CPPP_ASSERT(data.tag() == VisualNodeType::F);
-                _children.front().arerender();
+            void arepoint_reusing_first_child(bbe::ASTNode& nd,VisualNode&& fchl){
+                amoved(nd);
+                clear();
+                apopulate_reusing_first_child(std::move(fchl));
             }
+            void aupdate(bbe::ASTNode&& an){
+                m_a() = std::move(an);
+                clear();
+                apopulate();
+            }
+            void aupdate_fromnone(bbe::ASTNode&& an){
+                CPPP_ASSERT(a().type() == bbe::NodeType::NTYPE);
+                m_a() = std::move(an);
+                apopulate();
+            }
+            void aclear(){
+                m_a() = {bbe::NodeType::NTYPE,0};
+                clear();
+            }
+            void apromote(std::uint32_t indx){
+                bbe::ASTNode tmp = std::move(m_a().children()[indx]);
+                aupdate(std::move(tmp));
+            }
+            void asetp32(std::uint32_t p32){
+                m_a().setp32(p32);
+            }
+            // TODO: remove this
             void prepopulate(){
                 _children.clear();
-                for(auto& fn : p().functions()){
+                for(auto& fn : m_p().functions()){
                     _children.emplace_back(fn);
                 }
-            }
-            void prerender(){
-                CPPP_ASSERT(data.tag() == VisualNodeType::P);
-                for(auto& child : _children) child.frerender();
             }
             bool is_placeholder() const{
                 return (data.tag() == VisualNodeType::A && a().type() == bbe::NodeType::NTYPE)

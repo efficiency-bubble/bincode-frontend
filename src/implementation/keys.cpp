@@ -3,34 +3,28 @@
 #include<sfe/editor.hpp>
 #include<concepts>
 namespace sfe{
-    static void steal_lhs(VisualNode& ui,bbe::ASTNode&& node){
-        std::ranges::swap(node,ui.a());
-        // node is now old
-        VisualNode old_ui{ui.a(),VisualNode::no_populate};
-        std::ranges::swap(old_ui,ui);
-        
-        old_ui.arepoint(ui.a().children()[0] = std::move(node));
-        old_ui.arerender();
-        ui.apopulate(std::move(old_ui));
+    static void steal_lhs(VisualNode& outervn,bbe::ASTNode&& node){
+        VisualNode oldvn{std::move(outervn)};
+        bbe::ASTNode& outeran = oldvn.amodify().release();
+        bbe::ASTNode oldan{std::exchange(outeran,std::move(node))};
+        outeran.children()[0uz].initialize(std::move(oldan));
+        oldvn.amoved(outeran.children()[0uz]);
+        outervn.arepoint_reusing_first_child(outeran,std::move(oldvn));
     }
     static void builtin_n_ary(VisualNode& sel,bbe::NodeType nt,std::uint32_t prim,CodeEntry& ed,std::uint32_t arity){
         bool second = (arity > 1) && (sel.a().type() != bbe::NodeType::NTYPE);
         steal_lhs(sel,{nt,prim,arity,bbe::null_initialize});
-        sel.apopulate_butfirst();
         ed.cursor().enter(second,false);
     }
     bool NodeKeyConfig::handle(CodeEntry& e,Keypress k) const{
         if(e.cursor().selected().type() == VisualNodeType::A){
-            bbe::ASTNode& n = e.cursor().selected().a();
-            if(n.type() == bbe::NodeType::NTYPE){
+            if(e.cursor().selected().a().type() == bbe::NodeType::NTYPE){
                 if(auto it=replace.find(k);it!=replace.end()){
                     if(it->second.arity){
-                        n = {it->second.nt,it->second.prim,it->second.arity,bbe::null_initialize};
-                        e.cursor().selected().arerender();
+                        e.cursor().selected().aupdate_fromnone({it->second.nt,it->second.prim,it->second.arity,bbe::null_initialize});
                         e.cursor().enter(0,false);
                     }else{
-                        n = {it->second.nt,it->second.prim};
-                        e.cursor().selected().arerender();
+                        e.cursor().selected().aupdate_fromnone({it->second.nt,it->second.prim});
                         e.cursor().set_after(true);
                     }
                     return true;

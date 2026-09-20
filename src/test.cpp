@@ -31,14 +31,15 @@ cppp::fvec3 new_chroma(){
 }
 bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
     if(kc.handle(ed,ke)) return true;
-    switch(ed.cursor().selected().type()){
+    sfe::VisualNode& sel = ed.cursor().selected();
+    switch(sel.type()){
         case sfe::VisualNodeType::A: {
-            bbe::ASTNode& a = ed.cursor().selected().a();
+            const bbe::ASTNode& a = sel.a();
             switch(a.type()){
                 using enum bbe::NodeType;
                 case BOOL:
                     if(ke.key() == SDLK_RETURN){
-                        a.setp32(1-a.getp32());
+                        sel.asetp32(1-a.getp32());
                         return true;
                     }
                     break;
@@ -48,7 +49,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                             switch(ke.key()){
                                 case SDLK_BACKSPACE:
                                     if(a.getp32()){
-                                        a.setp32(a.getp32() / 10);
+                                        sel.asetp32(a.getp32() / 10);
                                         return true;
                                     }
                                     break;
@@ -56,7 +57,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                                 case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9: {
                                     std::uint64_t new_num = static_cast<std::uint64_t>(a.getp32())*10+static_cast<std::uint64_t>(ke.key()-SDLK_0);
                                     if(std::in_range<std::uint32_t>(new_num)){
-                                        a.setp32(static_cast<std::uint32_t>(new_num));
+                                        sel.asetp32(static_cast<std::uint32_t>(new_num));
                                     }else{
                                         using namespace std::chrono_literals;
                                         toast.reset(u8"Overflow!"s,810ms);
@@ -73,29 +74,26 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                 if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))&&ke.key()==SDLK_RETURN){
                     std::uint32_t indx = ed.cursor().index_of_selection();
                     bool aft = ed.cursor().is_after();
-                    ed.cursor().selected2().a().children().insert(indx+aft,bbe::NodeType::NTYPE);
                     ed.cursor().leave();
-                    ed.cursor().selected().arerender();
+                    ed.cursor().selected().ainsert(indx+aft,bbe::NodeType::NTYPE);
                     ed.cursor().enter(indx+1uz,aft);
                 }
             }
             break;
         }
         case sfe::VisualNodeType::F: {
-            bbe::Function& f = ed.cursor().selected().f();
+            const bbe::Function& f = ed.cursor().selected().f();
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                 switch(ke.key()){
                     case SDLK_BACKSPACE: {
                         proj.entities().functions().erase(f.index());
                         ed.cursor().leave();
                         ed.cursor().selected().perasef(f);
-                        ed.cursor().selected().prerender();
                         break;
                     }
                     case SDLK_RETURN: {
                         if(bbe::type_id tid=f.ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
-                            f.signature().set_return(proj.entities().types()[tid]);
-                            ed.cursor().selected().freloadr();
+                            sel.fsetr(proj.entities().types()[tid]);
                         }
                         break;
                     }
@@ -112,7 +110,6 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                         fn.set_cname(cppp::format<u8"fn{}"_ts>(fn.index()));
                         proj.names().name_function(fn.index(),{u8"_unnamed"s,new_chroma()});
                         ed.root().paddf(fn);
-                        ed.root().prerender();
                         break;
                     }
                 }
@@ -296,7 +293,7 @@ int main(){
             ed.graphics_context().draw_text(ed.toast().message(),{10.0f,10.0f+ed.graphics_context().ascender()*0.6f},0.6f,{1.0f,0.0f,0.0f});
         }
         if(ed.code().cursor().selected().type() == sfe::VisualNodeType::A){
-            bbe::ASTNode& an = ed.code().cursor().selected().a();
+            const bbe::ASTNode& an = ed.code().cursor().selected().a();
             constexpr static float DIAG_TEXT_SCALE = 0.65f;
             float winheight_f = ed.graphics_context().cmap().win_size().y();
             float y = winheight_f * 0.75f + ed.graphics_context().ascender()*DIAG_TEXT_SCALE;

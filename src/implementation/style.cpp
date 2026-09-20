@@ -52,20 +52,33 @@ namespace sfe{
         float b = static_cast<float>(fbv.pop_front())/255.0f;
         return {r,g,b};
     }
-    NameDatabase::NameDatabase(cppp::frozen_byte_view& v){
-        // see TODO above
-        std::uint64_t nentries = cppp::muleb128_r<std::uint64_t>(v);
-        while(nentries--){
+    NameDatabase::NameDatabase(const bbe::TypeDatabase& tdb,cppp::frozen_byte_view& v){
+        std::uint64_t nfentries = cppp::muleb128_r<std::uint64_t>(v);
+        while(nfentries--){
             bbe::func_id fid = cppp::muleb128_r<bbe::func_id>(v);
             std::uint64_t ns = cppp::muleb128_r<std::uint64_t>(v);
             const char8_t* namebuf = std::start_lifetime_as_array<char8_t>(v.read(ns),ns);
             fnames.try_emplace(fid,cppp::str(namebuf,ns),deserialize_color(v));
+        }
+        std::uint64_t ntentries = cppp::muleb128_r<std::uint64_t>(v);
+        while(ntentries--){
+            bbe::func_id tid = cppp::muleb128_r<bbe::type_id>(v);
+            std::uint64_t ns = cppp::muleb128_r<std::uint64_t>(v);
+            const char8_t* namebuf = std::start_lifetime_as_array<char8_t>(v.read(ns),ns);
+            dtnames.try_emplace(tdb[tid],cppp::str(namebuf,ns),deserialize_color(v));
         }
     }
     void NameDatabase::serialize(cppp::bytes& b,const bbe::SCM& scm) const{
         cppp::muleb128_w<std::uint64_t>(b,fnames.size());
         for(const auto& [k,v] : fnames){
             cppp::muleb128_w<bbe::func_id>(b,scm.fcmap.at(k));
+            cppp::muleb128_w<std::uint64_t>(b,v.identifier().size());
+            b.append(std::as_bytes(std::span{v.identifier()}));
+            serialize_color(b,v.color());
+        }
+        cppp::muleb128_w<std::uint64_t>(b,dtnames.size());
+        for(const auto& [k,v] : dtnames){
+            cppp::muleb128_w<bbe::type_id>(b,k->index());
             cppp::muleb128_w<std::uint64_t>(b,v.identifier().size());
             b.append(std::as_bytes(std::span{v.identifier()}));
             serialize_color(b,v.color());

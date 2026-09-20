@@ -30,7 +30,7 @@ namespace sfe::commands{
     }
     void re_cname_selection(Window& ed,void*){
         if(ed.code().cursor().selected().type() == VisualNodeType::F){
-            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.code().cursor().selected().f().cname());
+            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.code().cursor().selected().fcname());
         }
     }
     void recolor_selection(Window& ed,void*){
@@ -60,13 +60,12 @@ namespace sfe::commands{
         }while(nread);
         cppp::frozen_byte_view scanner{save};
         ed.project().entities() = {scanner};
-        ed.project().names() = {scanner};
+        ed.project().names() = {ed.project().entities().types(),scanner};
         ed.code().root().prepopulate();
         ed.code().cursor().home();
     }
     void reset_cursor(Window& ed,void*){
         ed.code().cursor().home();
-        ed.code().root().prerender();
     }
     void inline_transform_initialize(bbe::ASTNode& dst,const bbe::ASTNode& src){
         if(src.type() == bbe::NodeType::ARG){
@@ -78,10 +77,10 @@ namespace sfe::commands{
     void inline_function(Window& ed,void*){
         VisualNode& sel = ed.code().cursor().selected();
         if(sel.type() == VisualNodeType::A && sel.a().type() == bbe::NodeType::CALL_BUILTIN && sel.a().getp32() == 0 && sel.a().children()[0uz].type() == bbe::NodeType::FNSYM){
-            bbe::ASTNode old = std::exchange(sel.a(),{bbe::NodeType::HAVEVAR,0,2,bbe::uninitialize});
-            sel.a().children()[0uz].initialize(std::move(old.children()[1uz]));
-            inline_transform_initialize(sel.a().children()[1uz],ed.project().entities().functions()[old.children()[0uz].getp32()].ast());
-            sel.arerender();
+            VisualNode::ANodeHandle anh{sel.amodify()};
+            bbe::ASTNode old = std::exchange(*anh,{bbe::NodeType::HAVEVAR,0,2,bbe::uninitialize});
+            anh->children()[0uz].initialize(std::move(old.children()[1uz]));
+            inline_transform_initialize(anh->children()[1uz],ed.project().entities().functions()[old.children()[0uz].getp32()].ast());
         }
     }
     void quit(Window&,void*){
@@ -94,7 +93,7 @@ namespace sfe::commands{
     }
     void debug_selection(Window& ed,void*){
         if(ed.code().cursor().selected().type() == VisualNodeType::A){
-            cppp::print<u8"{:p} = {}"_ts>(static_cast<void*>(&ed.code().cursor().selected().a()),std::to_underlying(ed.code().cursor().selected().a().type()));
+            cppp::print<u8"{:p} = {}"_ts>(static_cast<const void*>(&ed.code().cursor().selected().a()),std::to_underlying(ed.code().cursor().selected().a().type()));
         }
         std::println();
     }
@@ -192,11 +191,11 @@ namespace sfe::commands{
             if(elt.p->type() != VisualNodeType::A) break;
             if(elt.p->a().type() == bbe::NodeType::COMMA){
                 if(up){
-                    elt.p->a().setp32(std::saturating_sub(elt.p->a().getp32(),1_u32));
+                    elt.p->asetp32(std::saturating_sub(elt.p->a().getp32(),1_u32));
                 }else{
                     std::uint32_t newind = elt.p->a().getp32() + 1;
                     if(newind < elt.p->a().children().size()){
-                        elt.p->a().setp32(newind);
+                        elt.p->asetp32(newind);
                     }
                 }
             }
