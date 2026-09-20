@@ -82,10 +82,10 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             break;
         }
         case sfe::VisualNodeType::F: {
+            bbe::Function& f = ed.cursor().selected().f();
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                 switch(ke.key()){
                     case SDLK_BACKSPACE: {
-                        bbe::Function& f = ed.cursor().selected().f();
                         proj.entities().functions().erase(f.index());
                         ed.cursor().leave();
                         ed.cursor().selected().perasef(f);
@@ -93,8 +93,8 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                         break;
                     }
                     case SDLK_RETURN: {
-                        if(bbe::type_id tid=ed.cursor().selected().f().ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
-                            ed.cursor().selected().f().signature().set_return(proj.entities().types()[tid]);
+                        if(bbe::type_id tid=f.ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
+                            f.signature().set_return(proj.entities().types()[tid]);
                             ed.cursor().selected().freloadr();
                         }
                         break;
@@ -119,7 +119,10 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             }
             break;
         }
-        case sfe::VisualNodeType::T: break;
+        case sfe::VisualNodeType::T: {
+            // TODO
+            break;
+        }
     }
     return false;
 }
@@ -139,7 +142,7 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
             if(tdb[tid].type() == bbe::TypeCategory::FUNCTION_POINTER){
                 return {0.6274509803921569f,0.9568627450980393f,0.2235294117647059f};
             }
-            return {0.8588235294117647f, 0.23137254901960785f, 0.9215686274509803f};
+            return {0.8588235294117647f,0.23137254901960785f,0.9215686274509803f};
     }
 }
 int main(){
@@ -259,6 +262,11 @@ int main(){
                     edb.clear();
                     for(auto& f : proj.entities().functions()){
                         f.recalculate_types(proj.entities(),edb);
+                    }
+                    for(const auto& pel : ed.code().cursor().path_elements()){
+                        if(pel.p->type() == sfe::VisualNodeType::F){
+                            pel.p->ftwriteback();
+                        }
                     }
                     break;
                 }

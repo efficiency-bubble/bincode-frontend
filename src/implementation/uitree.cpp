@@ -221,12 +221,14 @@ namespace sfe{
         bool selected = (&cursor.selected() == this);
         // TODO
         static_cast<void>(names),static_cast<void>(altmode);
-        switch(t().tag()){
-            case MutableTypeSpecType::NONE:
-                gc.draw_wrapped_text_at_cursor(u8"_"sv,pos,right,left,1.0f,selected?RED:WHITE);
-                goto anodrawsel;
-            case MutableTypeSpecType::DTYPE: {
-                const Name& dtn{names.get_defined_type_name(*t().get<MutableTypeSpecType::DTYPE>())};
+        if(!t()){
+            gc.draw_wrapped_text_at_cursor(u8"_"sv,pos,right,left,1.0f,selected?RED:WHITE);
+            goto anodrawsel;
+        }else switch(t()->type()){
+            case bbe::TypeCategory::VOID:
+            case bbe::TypeCategory::SIGNED_INTEGRAL:
+            case bbe::TypeCategory::UNSIGNED_INTEGRAL: {
+                const Name& dtn{names.get_defined_type_name(*t())};
                 gc.draw_wrapped_text_at_cursor(dtn.identifier(),pos,right,left,1.0f,dtn.color());
                 cursor_pos = pos;
                 break;

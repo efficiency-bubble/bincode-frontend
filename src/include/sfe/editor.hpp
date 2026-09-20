@@ -19,6 +19,9 @@ namespace sfe{
         void navigate(bool right,bool fast);
         public:
             CodeEntry(VisualNode&& root) : _cursor(std::move(root)){}
+            const bbe::ProjectEntitiesPool& proj() const{
+                return root().p();
+            }
             const VisualNode& root() const{
                 return _cursor.root();
             }
