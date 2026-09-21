@@ -1,5 +1,4 @@
 #pragma once
-#include<cppp/type-erasure.hpp>
 #include<bbe/project_entity_pool.hpp>
 #include<bbe/function.hpp>
 #include<cppp/variant.hpp>
@@ -19,11 +18,17 @@ namespace sfe{
     // https://gcc.gnu.org/bugzilla/show_bug.cgi?id=127427
     #define SFE_ANNOT(t) [[=^^std::type_identity_t<t>]]
     #endif
+    enum class MTSCompoundTypeCategory{
+        PACK,
+        FUNCTION_POINTER,
+        POINTER
+    };
     enum class VisualNodeType{
         A SFE_ANNOT(bbe::ASTNode*),
         F SFE_ANNOT(bbe::Function*),
         P SFE_ANNOT(bbe::ProjectEntitiesPool*),
-        T SFE_ANNOT(const bbe::TypeInfo*)
+        DT SFE_ANNOT(const bbe::TypeInfo*),
+        CT SFE_ANNOT(MTSCompoundTypeCategory)
     };
     class UICursor;
     class VisualNode{
@@ -43,8 +48,11 @@ namespace sfe{
         bbe::ProjectEntitiesPool& m_p(){
             return *data.get<VisualNodeType::P>();
         }
-        const bbe::TypeInfo*& m_t(){
-            return data.get<VisualNodeType::T>();
+        const bbe::TypeInfo*& m_dt(){
+            return data.get<VisualNodeType::DT>();
+        }
+        MTSCompoundTypeCategory& m_ct(){
+            return data.get<VisualNodeType::CT>();
         }
         void apopulate(){
             for(auto& c : m_a().children()){
@@ -73,7 +81,8 @@ namespace sfe{
                     _children.emplace_back(fn);
                 }
             }
-            VisualNode(const bbe::TypeInfo& t) : data(cppp::in_place_etor<VisualNodeType::T>,&t){}
+            VisualNode(MTSCompoundTypeCategory mctc) : data(cppp::in_place_etor<VisualNodeType::CT>,mctc){}
+            VisualNode(const bbe::TypeInfo& t) : data(cppp::in_place_etor<VisualNodeType::DT>,&t){}
             VisualNode(VisualNode&& other) = default;
             VisualNode(const VisualNode&) = delete;
             VisualNode& operator=(VisualNode&& other) = default;
@@ -103,40 +112,78 @@ namespace sfe{
             const bbe::ProjectEntitiesPool& p() const{
                 return *data.get<VisualNodeType::P>();
             }
-            const bbe::TypeInfo* t() const{
-                return data.get<VisualNodeType::T>();
+            const bbe::TypeInfo* dt() const{
+                return data.get<VisualNodeType::DT>();
             }
-            void treset(){
-                m_t() = nullptr;
+            MTSCompoundTypeCategory ct() const{
+                return data.get<VisualNodeType::CT>();
+            }
+            void dtblank(){
+                m_dt() = nullptr;
                 clear();
             }
             void tupdate(const bbe::TypeInfo& inf){
-                m_t() = &inf;
                 clear();
                 switch(inf.type()){
                     case bbe::TypeCategory::VOID:
                     case bbe::TypeCategory::SIGNED_INTEGRAL:
                     case bbe::TypeCategory::UNSIGNED_INTEGRAL:
+                        data.emplace<VisualNodeType::DT>(&inf);
                         break;
                     case bbe::TypeCategory::PACK:
-                        for(const auto& c : t()->pack_contents()){
+                        data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::PACK);
+                        for(const auto& c : inf.pack_contents()){
                             _children.emplace_back(c);
                         }
                         break;
                     case bbe::TypeCategory::POINTER:
-                        _children.emplace_back(t()->pointee());
+                        data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::POINTER);
+                        _children.emplace_back(inf.pointee());
                         break;
                     case bbe::TypeCategory::FUNCTION_POINTER:
-                        _children.emplace_back(t()->function_signature().return_type());
-                        _children.emplace_back(t()->function_signature().parameter());
+                        data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::FUNCTION_POINTER);
+                        _children.emplace_back(inf.function_signature().return_type());
+                        _children.emplace_back(inf.function_signature().parameter());
                         break;
                 }
             }
-            void ftwriteback(){
-                if(const bbe::TypeInfo* at=_children[0uz].t()){
+            const bbe::TypeInfo* tcompute(const bbe::TypeDatabase& tdb) const{
+                switch(data.tag()){
+                    case VisualNodeType::CT:
+                        switch(ct()){
+                            case MTSCompoundTypeCategory::FUNCTION_POINTER: {
+                                if(const bbe::TypeInfo* rt = _children[0uz].tcompute(tdb)){
+                                    if(const bbe::TypeInfo* pt = _children[1uz].tcompute(tdb)){
+                                        return &tdb.function_of({*rt,*pt});
+                                    }else return nullptr;
+                                }else return nullptr;
+                            }
+                            case MTSCompoundTypeCategory::PACK: {
+                                cppp::fixed_array<const bbe::TypeInfo*> arr{_children.size()};
+                                for(std::size_t i=0uz;i<_children.size();++i){
+                                    if(const bbe::TypeInfo* t = _children[i].tcompute(tdb)){
+                                        arr[i] = t;
+                                    }else return nullptr;
+                                }
+                                return &tdb.pack_of(std::move(arr));
+                            }
+                            case MTSCompoundTypeCategory::POINTER: {
+                                if(const bbe::TypeInfo* c0 = _children[0uz].tcompute(tdb)){
+                                    return &tdb.pointer_to(*c0);
+                                }else return nullptr;
+                            }
+                        }
+                        cppp::unreachable();
+                    case VisualNodeType::DT:
+                        return dt();
+                    default: cppp::unreachable();
+                }
+            }
+            void ftwriteback(const bbe::TypeDatabase& tdb){
+                if(const bbe::TypeInfo* at=_children[0uz].tcompute(tdb)){
                     m_f().signature().set_param(*at);
                 }
-                if(const bbe::TypeInfo* rt=_children[1uz].t()){
+                if(const bbe::TypeInfo* rt=_children[1uz].tcompute(tdb)){
                     m_f().signature().set_param(*rt);
                 }
             }
@@ -249,7 +296,7 @@ namespace sfe{
             }
             bool is_placeholder() const{
                 return (data.tag() == VisualNodeType::A && a().type() == bbe::NodeType::NTYPE)
-                    || (data.tag() == VisualNodeType::T && !t());
+                    || (data.tag() == VisualNodeType::DT && !dt());
             }
             VisualNodeType type() const{
                 return data.tag();

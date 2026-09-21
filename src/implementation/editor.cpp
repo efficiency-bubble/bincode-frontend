@@ -74,37 +74,12 @@ namespace sfe{
                         }
                         break;
                     }
-                    case VisualNodeType::T: {
-                        // const bbe::TypeInfo*& t = _cursor.selected().t();
-                        // if(t){
-                        //     _cursor.selected().treset();
-                        // }else{
-                        //     if(_cursor.selected2().type() != VisualNodeType::T){
-                        //         break; // trying to delete an already-blank root node; do nothing
-                        //     }
-                        //     std::uint32_t ti = _cursor.index_of_selection();
-                        //     _cursor.leave();
-                        //     _cursor.set_after(false);
-                        //     if(t->type() == bbe::TypeCategory::PACK){
-                        //         cppp::uninitialized_memory<const bbe::TypeInfo*> np{t->pack_contents().size()-1uz};
-                        //         auto middle = t->pack_contents().array().begin() + ti;
-                        //         std::uninitialized_copy(middle+1,t->pack_contents().array().end(),
-                        //             std::uninitialized_copy(t->pack_contents().array().begin(),middle,np.data())
-                        //         );
-                        //         t = &proj().types().pack_of(std::move(np));
-                        //         _cursor.selected().popi(ti);
-                        //         if(ti) _cursor.enter(ti-1,true);
-                        //     }else if(t->type() == bbe::TypeCategory::FUNCTION_POINTER){
-                        //         [[assume(ti <= 1)]];
-                        //         bbe::ASTNode tmp = std::move(_cursor.selected().a().children()[1-ti]);
-                        //         _cursor.selected().a() = std::move(tmp);
-                        //         _cursor.selected().arerender();
-                        //     }else{
-                        //         // can't drop down multiple nodes, just delete them
-                        //         _cursor.selected().a() = {bbe::NodeType::NTYPE,0};
-                        //         break;
-                        //     }
-                        // }
+                    case VisualNodeType::CT: {
+                        // TODO
+                        break;
+                    }
+                    case VisualNodeType::DT: {
+                        // TODO
                         break;
                     }
                     default:;

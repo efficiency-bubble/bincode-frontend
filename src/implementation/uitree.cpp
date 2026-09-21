@@ -220,23 +220,24 @@ namespace sfe{
         cppp::fvec2 cursor_pos;
         bool selected = (&cursor.selected() == this);
         // TODO
-        static_cast<void>(names),static_cast<void>(altmode);
-        if(!t()){
-            gc.draw_wrapped_text_at_cursor(u8"_"sv,pos,right,left,1.0f,selected?RED:WHITE);
-            goto anodrawsel;
-        }else switch(t()->type()){
-            case bbe::TypeCategory::VOID:
-            case bbe::TypeCategory::SIGNED_INTEGRAL:
-            case bbe::TypeCategory::UNSIGNED_INTEGRAL: {
-                const Name& dtn{names.get_defined_type_name(*t())};
-                gc.draw_wrapped_text_at_cursor(dtn.identifier(),pos,right,left,1.0f,dtn.color());
-                cursor_pos = pos;
+        static_cast<void>(altmode);
+        switch(data.tag()){
+            case VisualNodeType::DT: {
+                if(dt()){
+                    const Name& dtn{names.get_defined_type_name(*dt())};
+                    gc.draw_wrapped_text_at_cursor(dtn.identifier(),pos,right,left,1.0f,dtn.color());
+                    cursor_pos = pos;
+                }else{
+                    gc.draw_wrapped_text_at_cursor(u8"_"sv,pos,right,left,1.0f,selected?RED:WHITE);
+                    goto anodrawsel;
+                }
                 break;
             }
-            default:
+            case VisualNodeType::CT:
                 gc.draw_wrapped_text_at_cursor(u8"/* unimplemented */"s,pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
+            default: cppp::unreachable();
         }
         if(selected){
             if(cursor.is_after()){

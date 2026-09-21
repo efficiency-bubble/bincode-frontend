@@ -116,7 +116,11 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             }
             break;
         }
-        case sfe::VisualNodeType::T: {
+        case sfe::VisualNodeType::CT: {
+            // TODO
+            break;
+        }
+        case sfe::VisualNodeType::DT: {
             // TODO
             break;
         }
@@ -260,9 +264,9 @@ int main(){
                     for(auto& f : proj.entities().functions()){
                         f.recalculate_types(proj.entities(),edb);
                     }
-                    for(const auto& pel : ed.code().cursor().path_elements()){
+                    for(const auto pel : ed.code().cursor().path_elements() | std::views::reverse){
                         if(pel.p->type() == sfe::VisualNodeType::F){
-                            pel.p->ftwriteback();
+                            pel.p->ftwriteback(proj.entities().types());
                         }
                     }
                     break;
