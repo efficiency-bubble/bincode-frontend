@@ -4,6 +4,7 @@
 #include<sfe/builtin-commands.hpp>
 #include<sfe/achievements.hpp>
 #include<cppp/format.hpp>
+#include<cppp/debug.hpp>
 #include<cppp/int.hpp>
 #include<sgl/sgl.hpp>
 #include<bbe/bbe.hpp>
@@ -121,7 +122,43 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             break;
         }
         case sfe::VisualNodeType::DT: {
-            // TODO
+            if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
+                if(const bbe::TypeInfo* dt=sel.dt()){
+                    if(ed.cursor().is_after()){
+                        switch(ke.key()){
+                            case SDLK_BACKSPACE:
+                                if(dt->index()){
+                                    sel.dtset(proj.entities().types()[dt->index() / 10]);
+                                    return true;
+                                }
+                                break;
+                            case SDLK_0: case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
+                            case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9: {
+                                std::uint64_t new_num = static_cast<std::uint64_t>(dt->index())*10+static_cast<std::uint64_t>(ke.key()-SDLK_0);
+                                if(std::in_range<bbe::type_id>(new_num) && static_cast<bbe::type_id>(new_num) < proj.entities().types().size()){
+                                    const bbe::TypeInfo& dt = proj.entities().types()[static_cast<bbe::type_id>(new_num)];
+                                    if(dt.type() == bbe::TypeCategory::DTYPE){
+                                        sel.dtset(dt);
+                                    }else{
+                                        using namespace std::chrono_literals;
+                                        toast.reset(u8"Not a dtype!"s,810ms);
+                                    }
+                                }else{
+                                    using namespace std::chrono_literals;
+                                    toast.reset(u8"Overflow!"s,810ms);
+                                }
+                                return true;
+                            }
+                        }
+                    }
+                }else{
+                    switch(ke.key()){
+                        case SDLK_F:
+                            sel.dtset(proj.entities().types()[bbe::TypeDatabase::T_VOID]);
+                            break;
+                    }
+                }
+            }
             break;
         }
     }

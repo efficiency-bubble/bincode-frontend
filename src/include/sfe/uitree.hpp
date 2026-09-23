@@ -126,12 +126,14 @@ namespace sfe{
                 m_dt() = nullptr;
                 clear();
             }
+            void dtset(const bbe::TypeInfo& dt){
+                CPPP_ASSERT(dt.type() == bbe::TypeCategory::DTYPE);
+                m_dt() = &dt;
+            }
             void tupdate(const bbe::TypeInfo& inf){
                 clear();
                 switch(inf.type()){
-                    case bbe::TypeCategory::VOID:
-                    case bbe::TypeCategory::SIGNED_INTEGRAL:
-                    case bbe::TypeCategory::UNSIGNED_INTEGRAL:
+                    case bbe::TypeCategory::DTYPE:
                         data.emplace<VisualNodeType::DT>(&inf);
                         break;
                     case bbe::TypeCategory::PACK:
@@ -188,7 +190,7 @@ namespace sfe{
                     m_f().signature().set_param(*at);
                 }
                 if(const bbe::TypeInfo* rt=_children[1uz].tcompute(tdb)){
-                    m_f().signature().set_param(*rt);
+                    m_f().signature().set_return(*rt);
                 }
             }
             void fsetp(const bbe::TypeInfo& r){
