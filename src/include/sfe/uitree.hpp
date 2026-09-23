@@ -118,6 +118,10 @@ namespace sfe{
             MTSCompoundTypeCategory ct() const{
                 return data.get<VisualNodeType::CT>();
             }
+            void cttodblank(){
+                data.emplace<VisualNodeType::DT>(nullptr);
+                clear();
+            }
             void dtblank(){
                 m_dt() = nullptr;
                 clear();
@@ -249,6 +253,10 @@ namespace sfe{
                 m_a().children().erase(i);
                 _children.erase(_children.begin()+i);
             }
+            void cterase(std::uint32_t i){
+                CPPP_ASSERT(data.tag() == VisualNodeType::CT);
+                _children.erase(_children.begin()+i);
+            }
             void ainsert(std::uint32_t i,bbe::ASTNode&& nd){
                 m_a().children().insert(i,std::move(nd));
                 _children.emplace(_children.begin()+i,m_a().children()[i]);
@@ -283,6 +291,11 @@ namespace sfe{
             void apromote(std::uint32_t indx){
                 bbe::ASTNode tmp = std::move(m_a().children()[indx]);
                 aupdate(std::move(tmp));
+            }
+            void ctpromote(std::uint32_t indx){
+                CPPP_ASSERT(data.tag() == VisualNodeType::CT);
+                VisualNode tmp{std::move(children()[indx])};
+                *this = std::move(tmp);
             }
             void asetp32(std::uint32_t p32){
                 m_a().setp32(p32);

@@ -59,7 +59,7 @@ namespace sfe{
                             std::uint32_t ti = _cursor.index_of_selection();
                             _cursor.leave();
                             _cursor.set_after(false);
-                            if(bbe::nchld_of(an.type()) == bbe::VARIABLE){
+                            if(bbe::nchld_of(_cursor.selected().a().type()) == bbe::VARIABLE){
                                 _cursor.selected().aerase(ti);
                                 if(ti) _cursor.enter(ti-1,true);
                             }else if(_cursor.selected().a().children().size() == 2){
@@ -74,12 +74,30 @@ namespace sfe{
                         }
                         break;
                     }
-                    case VisualNodeType::CT: {
-                        // TODO
+                    case VisualNodeType::CT:
+                        _cursor.selected().cttodblank();
                         break;
-                    }
                     case VisualNodeType::DT: {
-                        // TODO
+                        if(_cursor.selected().dt()){
+                            _cursor.selected().dtblank();
+                        }else{
+                            // parent can't be DT or else something's really, really wrong, so we just check for CT here
+                            if(_cursor.selected2().type() != VisualNodeType::CT){
+                                break; // trying to delete an already-blank root node; do nothing
+                            }
+                            std::uint32_t ti = _cursor.index_of_selection();
+                            _cursor.leave();
+                            _cursor.set_after(false);
+                            if(_cursor.selected().ct() == MTSCompoundTypeCategory::PACK){
+                                _cursor.selected().cterase(ti);
+                                if(ti) _cursor.enter(ti-1,true);
+                            }else if(_cursor.selected().ct() == MTSCompoundTypeCategory::FUNCTION_POINTER){
+                                [[assume(ti <= 1)]];
+                                _cursor.selected().ctpromote(1_u32-ti);
+                            }else{
+                                _cursor.selected().cttodblank();
+                            }
+                        }
                         break;
                     }
                     default:;
