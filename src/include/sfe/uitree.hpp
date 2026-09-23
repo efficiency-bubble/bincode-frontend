@@ -30,6 +30,8 @@ namespace sfe{
         DT SFE_ANNOT(const bbe::TypeInfo*),
         CT SFE_ANNOT(MTSCompoundTypeCategory)
     };
+    struct vn_from_dt_t{} constexpr inline vn_from_dt;
+    struct vn_from_unknown_t{} constexpr inline vn_from_unknown;
     class UICursor;
     class VisualNode{
         std::vector<VisualNode> _children;
@@ -65,6 +67,50 @@ namespace sfe{
                 _children.emplace_back(m_a().children()[i]);
             }
         }
+        void tpopulate(const bbe::TypeInfo& inf){
+            switch(inf.type()){
+                case bbe::TypeCategory::DTYPE:
+                    data.emplace<VisualNodeType::DT>(&inf);
+                    break;
+                case bbe::TypeCategory::PACK:
+                    data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::PACK);
+                    for(const auto& c : inf.pack_contents()){
+                        _children.emplace_back(vn_from_unknown,c);
+                    }
+                    break;
+                case bbe::TypeCategory::POINTER:
+                    data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::POINTER);
+                    _children.emplace_back(vn_from_unknown,inf.pointee());
+                    break;
+                case bbe::TypeCategory::FUNCTION_POINTER:
+                    data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::FUNCTION_POINTER);
+                    _children.emplace_back(vn_from_unknown,inf.function_signature().return_type());
+                    _children.emplace_back(vn_from_unknown,inf.function_signature().parameter());
+                    break;
+            }
+        }
+        void tpopulate_uninit(const bbe::TypeInfo& inf){
+            switch(inf.type()){
+                case bbe::TypeCategory::DTYPE:
+                    data.initialize<VisualNodeType::DT>(&inf);
+                    break;
+                case bbe::TypeCategory::PACK:
+                    data.initialize<VisualNodeType::CT>(MTSCompoundTypeCategory::PACK);
+                    for(const auto& c : inf.pack_contents()){
+                        _children.emplace_back(vn_from_unknown,c);
+                    }
+                    break;
+                case bbe::TypeCategory::POINTER:
+                    data.initialize<VisualNodeType::CT>(MTSCompoundTypeCategory::POINTER);
+                    _children.emplace_back(vn_from_unknown,inf.pointee());
+                    break;
+                case bbe::TypeCategory::FUNCTION_POINTER:
+                    data.initialize<VisualNodeType::CT>(MTSCompoundTypeCategory::FUNCTION_POINTER);
+                    _children.emplace_back(vn_from_unknown,inf.function_signature().return_type());
+                    _children.emplace_back(vn_from_unknown,inf.function_signature().parameter());
+                    break;
+            }
+        }
         public:
             constexpr static no_populate_t no_populate{};
             VisualNode(bbe::ASTNode& nd,no_populate_t) : data(cppp::in_place_etor<VisualNodeType::A>,&nd){}
@@ -72,8 +118,8 @@ namespace sfe{
                 apopulate();
             }
             VisualNode(bbe::Function& f) : data(cppp::in_place_etor<VisualNodeType::F>,&f){
-                _children.emplace_back(f.signature().parameter());
-                _children.emplace_back(f.signature().return_type());
+                _children.emplace_back(vn_from_unknown,f.signature().parameter());
+                _children.emplace_back(vn_from_unknown,f.signature().return_type());
                 _children.emplace_back(f.ast());
             }
             VisualNode(bbe::ProjectEntitiesPool& f) : data(cppp::in_place_etor<VisualNodeType::P>,&f){
@@ -82,7 +128,11 @@ namespace sfe{
                 }
             }
             VisualNode(MTSCompoundTypeCategory mctc) : data(cppp::in_place_etor<VisualNodeType::CT>,mctc){}
-            VisualNode(const bbe::TypeInfo& t) : data(cppp::in_place_etor<VisualNodeType::DT>,&t){}
+            VisualNode(vn_from_dt_t) : data(cppp::in_place_etor<VisualNodeType::DT>,nullptr){}
+            VisualNode(vn_from_dt_t,const bbe::TypeInfo& t) : data(cppp::in_place_etor<VisualNodeType::DT>,&t){}
+            VisualNode(vn_from_unknown_t,const bbe::TypeInfo& t) : data(cppp::uninitialize){
+                tpopulate_uninit(t);
+            }
             VisualNode(VisualNode&& other) = default;
             VisualNode(const VisualNode&) = delete;
             VisualNode& operator=(VisualNode&& other) = default;
@@ -126,32 +176,16 @@ namespace sfe{
                 m_dt() = nullptr;
                 clear();
             }
+            void ctappend(VisualNode&& nd){
+                _children.emplace_back(std::move(nd));
+            }
             void dtset(const bbe::TypeInfo& dt){
                 CPPP_ASSERT(dt.type() == bbe::TypeCategory::DTYPE);
                 m_dt() = &dt;
             }
             void tupdate(const bbe::TypeInfo& inf){
                 clear();
-                switch(inf.type()){
-                    case bbe::TypeCategory::DTYPE:
-                        data.emplace<VisualNodeType::DT>(&inf);
-                        break;
-                    case bbe::TypeCategory::PACK:
-                        data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::PACK);
-                        for(const auto& c : inf.pack_contents()){
-                            _children.emplace_back(c);
-                        }
-                        break;
-                    case bbe::TypeCategory::POINTER:
-                        data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::POINTER);
-                        _children.emplace_back(inf.pointee());
-                        break;
-                    case bbe::TypeCategory::FUNCTION_POINTER:
-                        data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::FUNCTION_POINTER);
-                        _children.emplace_back(inf.function_signature().return_type());
-                        _children.emplace_back(inf.function_signature().parameter());
-                        break;
-                }
+                tpopulate(inf);
             }
             const bbe::TypeInfo* tcompute(const bbe::TypeDatabase& tdb) const{
                 switch(data.tag()){
