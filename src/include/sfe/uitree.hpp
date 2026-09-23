@@ -300,7 +300,6 @@ namespace sfe{
             void asetp32(std::uint32_t p32){
                 m_a().setp32(p32);
             }
-            // TODO: remove this
             void prepopulate(){
                 _children.clear();
                 for(auto& fn : m_p().functions()){
