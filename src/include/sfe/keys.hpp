@@ -1,4 +1,5 @@
 #pragma once
+#include"commons.hpp"
 #include"commands.hpp"
 #include<SDL3/SDL_keycode.h>
 #include<SDL3/SDL_events.h>
@@ -7,10 +8,10 @@
 #include<utility>
 namespace sfe{
     enum class KeyModifiers : std::uint8_t{
-        NONE = 0,
-        CTRL = 1,
-        SHIFT = 2,
-        ALT = 4
+        NONE = 0_u8,
+        CTRL = 1_u8,
+        SHIFT = 2_u8,
+        ALT = 4_u8
     };
     // findable by ADL
     inline KeyModifiers operator|(KeyModifiers lhs,KeyModifiers rhs){

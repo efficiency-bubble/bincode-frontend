@@ -1,4 +1,5 @@
 #include<sfe/style.hpp>
+#include<sfe/commons.hpp>
 #include<cppp/format.hpp>
 #include<cppp/binary.hpp>
 #include<cppp/uleb.hpp>
@@ -11,14 +12,24 @@ namespace sfe{
         return std::nullopt;
     }
     cppp::str NameDatabase::display_type_name(const bbe::TypeInfo& ti) const{
-        using namespace cppp::literals;
         using namespace std::literals;
         switch(ti.type()){
             using enum bbe::TypeCategory;
-            case FUNCTION_POINTER: {
-                const bbe::FunctionSignature& sig = ti.function_signature();
-                return cppp::format<u8"{} => {}"_ts>(display_type_name(sig.parameter()),display_type_name(sig.return_type()));
-            }
+            case FUNCTION_POINTER:
+                // https://marralesfios.github.io/blog/nrvo
+                return [&]{
+                    const bbe::FunctionSignature& sig = ti.function_signature();
+                    cppp::str name{u8"("s};
+                    for(const bbe::TypeInfo& t : sig.parameters()){
+                        name.append(display_type_name(t));
+                        name.append(u8", "sv);
+                    }
+                    name.pop_back();
+                    name.back() = u8')';
+                    name.append(u8" => "sv);
+                    name.append(display_type_name(sig.return_type()));
+                    return name;
+                }();
             case POINTER:
                 return cppp::format<u8"P[{}]"_ts>(display_type_name(ti.pointee()));
             case PACK:

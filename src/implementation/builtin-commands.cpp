@@ -19,7 +19,6 @@
 #include<chrono>
 #include<memory>
 namespace sfe::commands{
-    using namespace cppp::literals;
     void open_command_palette(Window& ed,void*){
         ed.open_command_palette();
     }
@@ -42,25 +41,33 @@ namespace sfe::commands{
     void save(Window& ed,void*){
         cppp::bytes save;
         bbe::SCM scm{ed.project().entities().serialize(save)};
-        ed.project().names().serialize(save,scm);
-        cppp::BinaryFile bf{u8"testprog"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
-        bf.write(save);
+        {
+            cppp::BinaryFile bf{u8"testprog.bc"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
+            bf.write(save);
+            save.clear();
+        }
+        {
+            ed.project().names().serialize(save,scm);
+            cppp::BinaryFile nf{u8"testprog.bc.nt"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
+            nf.write(save);
+        }
         ed.toast().reset(cppp::format<u8"Saved {} bytes"_ts>(save.size()),1s);
     }
     void load(Window& ed,void*){
         ed.color_picker().close();
         ed.remove_textbox();
-        cppp::BinaryFile bf{u8"testprog"s,std::ios_base::in|std::ios_base::binary};
         cppp::bytes save;
-        std::array<std::byte,1024uz> buf;
-        std::size_t nread;
-        do{
-            nread = bf.read(buf);
-            save.append(std::span{buf.data(),nread});
-        }while(nread);
-        cppp::frozen_byte_view scanner{save};
-        ed.project().entities() = {scanner};
-        ed.project().names() = {ed.project().entities().types(),scanner};
+        {
+            cppp::read_file(save,u8"testprog.bc"s);
+            cppp::frozen_byte_view scanner{save};
+            ed.project().entities() = {scanner};
+            save.clear();
+        }
+        {
+            cppp::read_file(save,u8"testprog.bc.nt"s);
+            cppp::frozen_byte_view scanner{save};
+            ed.project().names() = {ed.project().entities().types(),scanner};
+        }
         ed.code().root().prepopulate();
         ed.code().cursor().home();
     }
@@ -149,7 +156,7 @@ namespace sfe::commands{
                 bbe::targets::x86::Program prog;
                 {
                     std::size_t cumsize = 0uz;
-                    for(const auto& fn : ed.code().root().p().functions()){
+                    for(const auto& fn : ed.project().entities().functions()){
                         if(fn.ast().type() == bbe::NodeType::IMPORT_STUB){
                             prog.import_function(fn.index(),fn.cname());
                         }else{

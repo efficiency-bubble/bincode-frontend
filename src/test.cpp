@@ -15,7 +15,7 @@ using namespace cppp::literals;
 sgl::FreeType ftlib;
 sgl::CachedFont code_font(){
     sgl::CachedFont gc{ftlib.load_font_from_fc(u8"Consolas"s),sgl::SdfMode::DIRECT};
-    gc.font().init_width_pt(15<<6uz,191,191);
+    gc.font().init_width_pt(15_u32<<6uz,191_u32,191_u32);
     return gc;
 }
 cppp::fvec3 new_chroma(){
@@ -40,7 +40,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                 using enum bbe::NodeType;
                 case BOOL:
                     if(ke.key() == SDLK_RETURN){
-                        sel.asetp32(1-a.getp32());
+                        sel.asetp32(1_u32-a.getp32());
                         return true;
                     }
                     break;
@@ -117,11 +117,18 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             }
             break;
         }
-        case sfe::VisualNodeType::CT: {
-            // TODO
+        case sfe::VisualNodeType::CT:
+            if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
+                if(sel.ct() == sfe::MTSCompoundTypeCategory::PACK){
+                    switch(ke.key()){
+                        case SDLK_RETURN:
+                            sel.ctappend({sfe::vn_from_dt});
+                            break;
+                    }
+                }
+            }
             break;
-        }
-        case sfe::VisualNodeType::DT: {
+        case sfe::VisualNodeType::DT:
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                 if(const bbe::TypeInfo* dt=sel.dt()){
                     if(ed.cursor().is_after()){
@@ -160,7 +167,6 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                 }
             }
             break;
-        }
     }
     return false;
 }
@@ -236,7 +242,7 @@ int main(){
     #endif
 
     { // scope for all GL objects. Their dtors must run before we destroy everything with SDL_Quit().
-    constexpr cppp::uvec2 SD{1200,600};
+    constexpr cppp::uvec2 SD{1200_u32,600_u32};
     sfe::Window ed{proj,SD,code_font(),0.8f};
     glClearColor(0.0f,0.0f,0.0f,1.0f);
     glEnable(GL_CULL_FACE);

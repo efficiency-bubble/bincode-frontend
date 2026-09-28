@@ -32,7 +32,6 @@ namespace sfe{
         }
     }
     void CodeEntry::keydown(Keypress kp){
-        using namespace cppp::literals;
         switch(kp.key()){
             case SDLK_LEFT:
             case SDLK_UP:
@@ -59,7 +58,7 @@ namespace sfe{
                             std::uint32_t ti = _cursor.index_of_selection();
                             _cursor.leave();
                             _cursor.set_after(false);
-                            if(bbe::nchld_of(_cursor.selected().a().type()) == bbe::VARIABLE){
+                            if(bbe::can_pop_back_from(_cursor.selected().a())){
                                 _cursor.selected().aerase(ti);
                                 if(ti) _cursor.enter(ti-1,true);
                             }else if(_cursor.selected().a().children().size() == 2){

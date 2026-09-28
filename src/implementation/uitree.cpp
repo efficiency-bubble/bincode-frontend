@@ -3,7 +3,6 @@
 #include<cppp/rtl.hpp>
 namespace sfe{
     using namespace std::literals;
-    using namespace cppp::literals;
     constexpr static cppp::fvec3 RED{1.0f,0.0f,0.0f};
     constexpr static cppp::fvec3 HIGHLIGHT{0.10588235294117647f,0.9607843137254902f,0.7294117647058823f};
     constexpr static cppp::fvec3 GRAY{0.7f};
@@ -52,7 +51,7 @@ namespace sfe{
         switch(a().type()){
             using enum bbe::NodeType;
             case ARG:
-                gc.draw_wrapped_text_at_cursor(u8"arg"sv,pos,right,left,0.75f,WHITE);
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"arg{}"_ts>(a().getp32()),pos,right,left,0.75f,WHITE);
                 cursor_pos = pos;
                 break;
             case DEREF:
@@ -93,7 +92,10 @@ namespace sfe{
                     case 0:
                         _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
                         gc.draw_wrapped_text_at_cursor(u8"("sv,pos,right,left,1.0f,WHITE);
-                        _children[1uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                        for(std::size_t i=1uz;i<_children.size();++i){
+                            if(i > 1uz) gc.draw_wrapped_text_at_cursor(u8","sv,pos,right,left,1.0f,WHITE);
+                            _children[i].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                        }
                         gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
                         break;
                     case 10:
@@ -260,14 +262,17 @@ namespace sfe{
             gc.draw_text_at_cursor(fn.identifier(),line_1,1.0f,fn.color());
             gc.draw_text_at_cursor(f().cname(),line_1,0.45f,GRAY);
             gc.draw_text_at_cursor(u8"("sv,line_1,1.0f,WHITE);
-            _children[0uz].tdraw(gc,errors,names,cursor,line_1,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
+            for(std::size_t i=2uz;i<_children.size();++i){
+                if(i > 2uz) gc.draw_text_at_cursor(u8","sv,line_1,1.0f,WHITE);
+                _children[i].tdraw(gc,errors,names,cursor,line_1,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
+            }
             gc.draw_text_at_cursor(u8") -> "sv,line_1,1.0f,WHITE);
-            _children[1uz].tdraw(gc,errors,names,cursor,line_1,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
+            _children[0uz].tdraw(gc,errors,names,cursor,line_1,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
             gc.draw_text_at_cursor(u8":"sv,line_1,1.0f,WHITE);
             right_x = line_1.x();
         }
         pos += cppp::fvec2(gc.charadvance()*4.0f,gc.line_height());
-        _children[2uz].adraw(gc,errors,names,cursor,pos,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
+        _children[1uz].adraw(gc,errors,names,cursor,pos,gc.cmap().win_size().x()-10.0f,pos.x(),altmode);
         
         if(&cursor.selected() == this){
             float bottom_y = pos.y() - gc.descender();

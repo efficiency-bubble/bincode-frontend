@@ -8,6 +8,7 @@
 #include<cstdint>
 #include<ranges>
 #include<vector>
+#include"commons.hpp"
 #include"graphics.hpp"
 #include"style.hpp"
 namespace sfe{
@@ -33,6 +34,9 @@ namespace sfe{
     struct vn_from_dt_t{} constexpr inline vn_from_dt;
     struct vn_from_unknown_t{} constexpr inline vn_from_unknown;
     class UICursor;
+    /*
+    FVN is [ret,body,argv...] even though it's rendered as [argv...,ret,body], to reduce computations
+    */
     class VisualNode{
         std::vector<VisualNode> _children;
         cppp::variant<VisualNodeType> data;
@@ -63,7 +67,7 @@ namespace sfe{
         }
         void apopulate_reusing_first_child(VisualNode&& vn){
             _children.emplace_back(std::move(vn));
-            for(std::uint32_t i=1;i<m_a().children().size();++i){
+            for(std::uint32_t i=1_u32;i<m_a().children().size();++i){
                 _children.emplace_back(m_a().children()[i]);
             }
         }
@@ -85,7 +89,9 @@ namespace sfe{
                 case bbe::TypeCategory::FUNCTION_POINTER:
                     data.emplace<VisualNodeType::CT>(MTSCompoundTypeCategory::FUNCTION_POINTER);
                     _children.emplace_back(vn_from_unknown,inf.function_signature().return_type());
-                    _children.emplace_back(vn_from_unknown,inf.function_signature().parameter());
+                    for(const bbe::TypeInfo& par : inf.function_signature().parameters()){
+                        _children.emplace_back(vn_from_unknown,par);
+                    }
                     break;
             }
         }
@@ -107,7 +113,9 @@ namespace sfe{
                 case bbe::TypeCategory::FUNCTION_POINTER:
                     data.initialize<VisualNodeType::CT>(MTSCompoundTypeCategory::FUNCTION_POINTER);
                     _children.emplace_back(vn_from_unknown,inf.function_signature().return_type());
-                    _children.emplace_back(vn_from_unknown,inf.function_signature().parameter());
+                    for(const bbe::TypeInfo& par : inf.function_signature().parameters()){
+                        _children.emplace_back(vn_from_unknown,par);
+                    }
                     break;
             }
         }
@@ -118,9 +126,11 @@ namespace sfe{
                 apopulate();
             }
             VisualNode(bbe::Function& f) : data(cppp::in_place_etor<VisualNodeType::F>,&f){
-                _children.emplace_back(vn_from_unknown,f.signature().parameter());
                 _children.emplace_back(vn_from_unknown,f.signature().return_type());
                 _children.emplace_back(f.ast());
+                for(const bbe::TypeInfo& par : f.signature().parameters()){
+                    _children.emplace_back(vn_from_unknown,par);
+                }
             }
             VisualNode(bbe::ProjectEntitiesPool& f) : data(cppp::in_place_etor<VisualNodeType::P>,&f){
                 for(bbe::Function& fn : f.functions()){
@@ -220,20 +230,22 @@ namespace sfe{
                 }
             }
             void ftwriteback(const bbe::TypeDatabase& tdb){
-                if(const bbe::TypeInfo* at=_children[0uz].tcompute(tdb)){
-                    m_f().signature().set_param(*at);
-                }
-                if(const bbe::TypeInfo* rt=_children[1uz].tcompute(tdb)){
+                if(const bbe::TypeInfo* rt=_children[0uz].tcompute(tdb)){
                     m_f().signature().set_return(*rt);
                 }
+                for(std::size_t i=2uz,j=0uz;i<_children.size();++i,++j){
+                    if(const bbe::TypeInfo* at=_children[i].tcompute(tdb)){
+                        m_f().signature().parameters().set(j,*at);
+                    }
+                }
             }
-            void fsetp(const bbe::TypeInfo& r){
-                m_f().signature().set_param(r);
-                _children[0uz].tupdate(r);
+            void fsetp(std::size_t i,const bbe::TypeInfo& r){
+                m_f().signature().parameters().set(i,r);
+                _children[i+2uz].tupdate(r);
             }
             void fsetr(const bbe::TypeInfo& r){
                 m_f().signature().set_return(r);
-                _children[1uz].tupdate(r);
+                _children[0uz].tupdate(r);
             }
             void paddf(bbe::Function& fn){
                 CPPP_ASSERT(data.tag() == VisualNodeType::P);
@@ -288,6 +300,9 @@ namespace sfe{
             void aerase(std::uint32_t i){
                 m_a().children().erase(i);
                 _children.erase(_children.begin()+i);
+                for(std::uint32_t i=0;i<cppp::assume_cast<std::uint32_t>(_children.size());++i){
+                    _children[i].amoved(m_a().children()[i]);
+                }
             }
             void cterase(std::uint32_t i){
                 CPPP_ASSERT(data.tag() == VisualNodeType::CT);
@@ -392,11 +407,11 @@ namespace sfe{
             }
             const VisualNode& below_top() const{
                 CPPP_ASSERT(has_nesting());
-                return path.size()>1?*path[path.size()-2].p:_root;
+                return path.size()>1uz?*path[path.size()-2uz].p:_root;
             }
             VisualNode& below_top(){
                 CPPP_ASSERT(has_nesting());
-                return path.size()>1?*path[path.size()-2].p:_root;
+                return path.size()>1uz?*path[path.size()-2uz].p:_root;
             }
             void leave(){
                 path.pop_back();
@@ -408,10 +423,10 @@ namespace sfe{
                 path.emplace_back(&top().children()[index],index);
             }
             bool is_first_child() const{
-                return etop().index == 0;
+                return etop().index == 0_u32;
             }
             bool is_last_child() const{
-                return etop().index+1 == below_top().children().size();
+                return etop().index+1_u32 == below_top().children().size();
             }
             void prev_sibling(){
                 etop().p = &below_top().children()[--etop().index];
