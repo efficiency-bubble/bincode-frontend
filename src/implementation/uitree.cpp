@@ -51,7 +51,7 @@ namespace sfe{
         switch(a().type()){
             using enum bbe::NodeType;
             case ARG:
-                gc.draw_wrapped_text_at_cursor(cppp::format<u8"arg{}"_ts>(a().getp32()),pos,right,left,0.75f,WHITE);
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"arg{}"_ts>(a().getp32()),pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
             case DEREF:
