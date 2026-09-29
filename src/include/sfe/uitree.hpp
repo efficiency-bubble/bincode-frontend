@@ -233,15 +233,20 @@ namespace sfe{
                 if(const bbe::TypeInfo* rt=_children[0uz].tcompute(tdb)){
                     m_f().signature().set_return(*rt);
                 }
+                cppp::fixed_array<const bbe::TypeInfo*> sptv(_children.size() - 2uz);
                 for(std::size_t i=2uz,j=0uz;i<_children.size();++i,++j){
                     if(const bbe::TypeInfo* at=_children[i].tcompute(tdb)){
-                        m_f().signature().parameters().set(j,*at);
-                    }
+                        sptv[j] = at;
+                    }else return;
                 }
+                m_f().signature().parameters() = std::move(sptv);
             }
             void fsetp(std::size_t i,const bbe::TypeInfo& r){
-                m_f().signature().parameters().set(i,r);
+                CPPP_ASSERT(data.tag() == VisualNodeType::F);
                 _children[i+2uz].tupdate(r);
+            }
+            void faddp(const bbe::TypeInfo& r){
+                _children.emplace_back(vn_from_unknown,r);
             }
             void fsetr(const bbe::TypeInfo& r){
                 m_f().signature().set_return(r);
@@ -260,7 +265,7 @@ namespace sfe{
                     return &vn.f() == p;
                 }));
             }
-            std::uint32_t apriority() const;
+            // std::uint32_t apriority() const;
             class ANodeHandle{
                 VisualNode* vn;
                 friend VisualNode;
@@ -311,6 +316,16 @@ namespace sfe{
             void ainsert(std::uint32_t i,bbe::ASTNode&& nd){
                 m_a().children().insert(i,std::move(nd));
                 _children.emplace(_children.begin()+i,m_a().children()[i]);
+                for(std::uint32_t i=0;i<cppp::assume_cast<std::uint32_t>(_children.size());++i){
+                    _children[i].amoved(m_a().children()[i]);
+                }
+            }
+            void aappend(bbe::ASTNode&& nd){
+                m_a().children().emplace(std::move(nd));
+                _children.emplace_back(m_a().children().back());
+                for(std::uint32_t i=0;i<cppp::assume_cast<std::uint32_t>(_children.size()-1uz);++i){
+                    _children[i].amoved(m_a().children()[i]);
+                }
             }
             void amoved(bbe::ASTNode& newloc){
                 data.emplace<VisualNodeType::A>(&newloc);

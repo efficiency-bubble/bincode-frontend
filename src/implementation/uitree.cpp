@@ -9,41 +9,41 @@ namespace sfe{
     constexpr static cppp::fvec3 CURSOR_ACCENT_1{0.5f,0.0f,0.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_2{0.8f,1.0f,1.0f};
     constexpr static cppp::fvec3 CURSOR_ACCENT_WEAK{0.3f,0.7f,0.7f};
-    static void draw_operand(const VisualNode& operand,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,std::uint32_t my_priority,bool altmode){
-        bool parenthesize = altmode || operand.apriority() < my_priority;
-        if(parenthesize){
-            gc.draw_wrapped_text_at_cursor(u8"("sv,pos,right,left,1.0f,WHITE);
-        }
-        operand.adraw(gc,errors,names,cursor,pos,right,left,altmode);
-        if(parenthesize){
-            gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
-        }
-    }
-    static void draw_binop(std::u8string_view op,const std::vector<VisualNode>& children,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,std::uint32_t my_priority,bool altmode){
-        draw_operand(children[0uz],gc,errors,names,cursor,pos,right,left,my_priority,altmode);
-        gc.draw_wrapped_text_at_cursor(op,pos,right,left,1.0f,RED);
-        draw_operand(children[1uz],gc,errors,names,cursor,pos,right,left,my_priority+1,altmode);
-    }
-    std::uint32_t VisualNode::apriority() const{
-        switch(a().type()){
-            case bbe::NodeType::CALL_BUILTIN:
-                switch(a().getp32()){
-                    case 10: // +
-                    case 20: // -
-                        return 3;
-                    case 30: // *
-                        return 4;
-                    case 50: // =
-                    case 51: // <=
-                        return 2;
-                    case 80: // []
-                        return 5;
-                }
-                break;
-            default:;
-        }
-        return 1984;
-    }
+    // static void draw_operand(const VisualNode& operand,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,std::uint32_t my_priority,bool altmode){
+    //     bool parenthesize = altmode || operand.apriority() < my_priority;
+    //     if(parenthesize){
+    //         gc.draw_wrapped_text_at_cursor(u8"("sv,pos,right,left,1.0f,WHITE);
+    //     }
+    //     operand.adraw(gc,errors,names,cursor,pos,right,left,altmode);
+    //     if(parenthesize){
+    //         gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
+    //     }
+    // }
+    // static void draw_binop(std::u8string_view op,const std::vector<VisualNode>& children,const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,std::uint32_t my_priority,bool altmode){
+    //     draw_operand(children[0uz],gc,errors,names,cursor,pos,right,left,my_priority,altmode);
+    //     gc.draw_wrapped_text_at_cursor(op,pos,right,left,1.0f,RED);
+    //     draw_operand(children[1uz],gc,errors,names,cursor,pos,right,left,my_priority+1,altmode);
+    // }
+    // std::uint32_t VisualNode::apriority() const{
+    //     switch(a().type()){
+    //         case bbe::NodeType::CALL:
+    //             switch(a().getp32()){
+    //                 case 10: // +
+    //                 case 20: // -
+    //                     return 3;
+    //                 case 30: // *
+    //                     return 4;
+    //                 case 50: // =
+    //                 case 51: // <=
+    //                     return 2;
+    //                 case 80: // []
+    //                     return 5;
+    //             }
+    //             break;
+    //         default:;
+    //     }
+    //     return 1984;
+    // }
     void VisualNode::adraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,float right,float left,bool altmode) const{
         cppp::fvec2 start_pos = pos;
         cppp::fvec2 cursor_pos;
@@ -87,50 +87,14 @@ namespace sfe{
                 cursor_pos = pos;
                 gc.draw_wrapped_text_at_cursor(u8"sdw"sv,pos,right,left,0.5f,GRAY);
                 break;
-            case CALL_BUILTIN:
-                switch(a().getp32()){
-                    case 0:
-                        _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
-                        gc.draw_wrapped_text_at_cursor(u8"("sv,pos,right,left,1.0f,WHITE);
-                        for(std::size_t i=1uz;i<_children.size();++i){
-                            if(i > 1uz) gc.draw_wrapped_text_at_cursor(u8","sv,pos,right,left,1.0f,WHITE);
-                            _children[i].adraw(gc,errors,names,cursor,pos,right,left,altmode);
-                        }
-                        gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
-                        break;
-                    case 10:
-                        draw_binop(u8"+"sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
-                        break;
-                    case 20:
-                        draw_binop(u8"-"sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
-                        break;
-                    case 30:
-                        draw_binop(u8"*"sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
-                        break;
-                    case 50:
-                        draw_binop(u8"="sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
-                        break;
-                    case 51:
-                        draw_binop(u8"<="sv,_children,gc,errors,names,cursor,pos,right,left,apriority(),altmode);
-                        break;
-                    case 60:
-                        gc.draw_wrapped_text_at_cursor(u8"!"s,pos,right,left,1.0f,WHITE);
-                        draw_operand(_children.front(),gc,errors,names,cursor,pos,right,left,apriority(),altmode);
-                        break;
-                    case 100:
-                        gc.draw_wrapped_text_at_cursor(u8"print("sv,pos,right,left,1.0f,WHITE);
-                        _children.front().adraw(gc,errors,names,cursor,pos,right,left,altmode);
-                        gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
-                        break;
-                    default:
-                        gc.draw_wrapped_text_at_cursor(cppp::format<u8"BUILTIN[{}]("_ts>(a().getp32()),pos,right,left,1.0f,WHITE);
-                        for(std::uint32_t i=0;i<_children.size();++i){
-                            if(i) gc.draw_wrapped_text_at_cursor(u8","sv,pos,right,left,1.0f,WHITE);
-                            _children[i].adraw(gc,errors,names,cursor,pos,right,left,altmode);
-                        }
-                        gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
-                        break;
+            case CALL:
+                _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                gc.draw_wrapped_text_at_cursor(u8"("sv,pos,right,left,1.0f,WHITE);
+                for(std::size_t i=1uz;i<_children.size();++i){
+                    if(i > 1uz) gc.draw_wrapped_text_at_cursor(u8","sv,pos,right,left,1.0f,WHITE);
+                    _children[i].adraw(gc,errors,names,cursor,pos,right,left,altmode);
                 }
+                gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 break;
             case PACK:
@@ -197,8 +161,37 @@ namespace sfe{
                 // TODO
                 gc.draw_wrapped_text_at_cursor(cppp::format<u8"**unimplemented: {}**"_ts>(std::to_underlying(a().type())),pos,right,left,1.0f,selected?RED:WHITE);
                 break;
-            case IMPORT_STUB:
-                gc.draw_wrapped_text_at_cursor(u8"(extern)"s,pos,right,left,1.0f,WHITE);
+            case EXTERN_OR_INTRIN:
+                if(std::uint32_t intr=a().getp32();intr!=bbe::Function::INTR_EXTERN){
+                    switch(intr){
+                        case 10:
+                            gc.draw_wrapped_text_at_cursor(u8"(intrin addu32)"s,pos,right,left,1.0f,WHITE);
+                            break;
+                        case 20:
+                            gc.draw_wrapped_text_at_cursor(u8"(intrin subu32)"s,pos,right,left,1.0f,WHITE);
+                            break;
+                        case 30:
+                            gc.draw_wrapped_text_at_cursor(u8"(intrin mulu32)"s,pos,right,left,1.0f,WHITE);
+                            break;
+                        case 50:
+                            gc.draw_wrapped_text_at_cursor(u8"(intrin equ32)"s,pos,right,left,1.0f,WHITE);
+                            break;
+                        case 51:
+                            gc.draw_wrapped_text_at_cursor(u8"(intrin leu32)"s,pos,right,left,1.0f,WHITE);
+                            break;
+                        case 60:
+                            gc.draw_wrapped_text_at_cursor(u8"(intrin notb)"s,pos,right,left,1.0f,WHITE);
+                            break;
+                        case 100:
+                            gc.draw_wrapped_text_at_cursor(u8"(intrin printu32)"s,pos,right,left,1.0f,WHITE);
+                            break;
+                        default:
+                            gc.draw_wrapped_text_at_cursor(cppp::format<u8"(intrin unknown {})"_ts>(intr),pos,right,left,1.0f,WHITE);
+                            break;
+                    }
+                }else{
+                    gc.draw_wrapped_text_at_cursor(u8"(extern)"s,pos,right,left,1.0f,WHITE);
+                }
                 cursor_pos = pos;
                 break;
         }

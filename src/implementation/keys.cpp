@@ -7,8 +7,8 @@ namespace sfe{
         VisualNode oldvn{std::move(outervn)};
         bbe::ASTNode& outeran = oldvn.amodify().release();
         bbe::ASTNode oldan{std::exchange(outeran,std::move(node))};
-        outeran.children()[0uz].initialize(std::move(oldan));
-        oldvn.amoved(outeran.children()[0uz]);
+        outeran.children()[0_u32].initialize(std::move(oldan));
+        oldvn.amoved(outeran.children()[0_u32]);
         outervn.arepoint_reusing_first_child(outeran,std::move(oldvn));
     }
     static void builtin_n_ary(VisualNode& sel,bbe::NodeType nt,std::uint32_t prim,CodeEntry& ed,std::uint32_t arity){

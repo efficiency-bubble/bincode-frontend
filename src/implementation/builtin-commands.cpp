@@ -82,12 +82,14 @@ namespace sfe::commands{
         }
     }
     void inline_function(Window& ed,void*){
-        VisualNode& sel = ed.code().cursor().selected();
-        if(sel.type() == VisualNodeType::A && sel.a().type() == bbe::NodeType::CALL_BUILTIN && sel.a().getp32() == 0 && sel.a().children()[0uz].type() == bbe::NodeType::FNSYM){
-            VisualNode::ANodeHandle anh{sel.amodify()};
-            bbe::ASTNode old = std::exchange(*anh,{bbe::NodeType::HAVEVAR,0,2,bbe::uninitialize});
-            anh->children()[0uz].initialize(std::move(old.children()[1uz]));
-            inline_transform_initialize(anh->children()[1uz],ed.project().entities().functions()[old.children()[0uz].getp32()].ast());
+        if(VisualNode& sel = ed.code().cursor().selected();sel.type() == VisualNodeType::A && sel.a().type() == bbe::NodeType::CALL && sel.a().children()[0_u32].type() == bbe::NodeType::FNSYM){
+            const bbe::Function& inlf = ed.project().entities().functions()[sel.a().children()[0_u32].getp32()];
+            if(!inlf.is_intrin()){
+                VisualNode::ANodeHandle anh{sel.amodify()};
+                bbe::ASTNode old = std::exchange(*anh,{bbe::NodeType::HAVEVAR,0,2,bbe::uninitialize});
+                anh->children()[0_u32].initialize(std::move(old.children()[1_u32]));
+                inline_transform_initialize(anh->children()[1_u32],inlf.ast());
+            }
         }
     }
     void quit(Window&,void*){
@@ -121,8 +123,13 @@ namespace sfe::commands{
             cppp::str rbuf;
             {
                 bbe::inter::dfg::CompiledFunctionPool compiled{ed.project().entities()};
+                bbe::func_id entry = std::numeric_limits<bbe::func_id>::max();
+                for(const bbe::Function& f : ed.project().entities().functions()){
+                    if(f.cname() == u8"example"sv) entry = f.index();
+                }
+                if(entry == std::numeric_limits<bbe::func_id>::max()) throw std::logic_error("No entry point found"s);
                 µs delta = time_execution([&]{
-                    bbe::inter::stringify(compiled.call(0,bbe::inter::uint32v{30}),rbuf);
+                    bbe::inter::stringify(compiled.call(entry,bbe::inter::uint32v{30}),rbuf);
                 });
                 std::span<int> a;
                 if(delta.count() < 1000){
@@ -153,23 +160,8 @@ namespace sfe::commands{
             cppp::str rbuf;
             {
                 bbe::formats::elf::Elf elf;
-                bbe::targets::x86::Program prog;
-                {
-                    std::size_t cumsize = 0uz;
-                    for(const auto& fn : ed.project().entities().functions()){
-                        if(fn.ast().type() == bbe::NodeType::IMPORT_STUB){
-                            prog.import_function(fn.index(),fn.cname());
-                        }else{
-                            bbe::targets::x86::Function compiled{fn.cname(),fn,ed.project().entities().types()};
-                            cumsize = compiled.instructions().size();
-                            prog.export_function(fn.index(),std::move(compiled));
-                        }
-                    }
-                    cppp::format_to<u8"{} bytes; "_ts>(rbuf,cumsize);
-                }
-                elf.add_text(prog);
+                elf.add_text(ed.project().entities());
                 cppp::BinaryFile outf{u8"testprog_c.o"s,std::ios_base::out|std::ios_base::binary|std::ios_base::trunc};
-                
                 outf.write(elf.encode());
             }
             if(int ret=std::system("g++ -O3 -m64 -s timing_helper.o testprog_c.o -o testprog_c")){

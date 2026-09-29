@@ -44,7 +44,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                         return true;
                     }
                     break;
-                case UINT32: case FNSYM: case COMMA: case PACKIND: case GETVAR: case HAVEVAR:
+                case UINT32: case FNSYM: case COMMA: case PACKIND: case GETVAR: case HAVEVAR: case EXTERN_OR_INTRIN:
                     if(ed.cursor().is_after()){
                         if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                             switch(ke.key()){
@@ -67,6 +67,13 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                                 }
                             }
                         }
+                    }
+                    break;
+                case CALL:
+                    switch(ke.key()){
+                        case SDLK_RETURN:
+                            sel.aappend({bbe::NodeType::NTYPE,0});
+                            break;
                     }
                     break;
                 default:;
@@ -92,12 +99,14 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                         ed.cursor().selected().perasef(f);
                         break;
                     }
-                    case SDLK_RETURN: {
+                    case SDLK_RETURN:
+                        ed.cursor().selected().faddp(proj.entities().types()[bbe::TypeDatabase::T_VOID]);
+                        break;
+                    case SDLK_F:
                         if(bbe::type_id tid=f.ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
                             sel.fsetr(proj.entities().types()[tid]);
                         }
                         break;
-                    }
                 }
             }
             break;
@@ -108,7 +117,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                     case SDLK_RETURN: {
                         const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
                         bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32});
-                        fn.set_cname(cppp::format<u8"fn{}"_ts>(fn.index()));
+                        fn.cname() = cppp::format<u8"fn{}"_ts>(fn.index());
                         proj.names().name_function(fn.index(),{u8"_unnamed"s,new_chroma()});
                         ed.root().paddf(fn);
                         break;
@@ -198,17 +207,11 @@ int main(){
     sfe::Project proj;
     bbe::ErrorDatabase edb;
     sfe::NodeKeyConfig kc;
-    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_EQUALS},{bbe::NodeType::CALL_BUILTIN,10,2});
-    kc.register_key(SDLK_MINUS,{bbe::NodeType::CALL_BUILTIN,20,2});
-    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::CALL_BUILTIN,30,2});
-    kc.register_key(SDLK_EQUALS,{bbe::NodeType::CALL_BUILTIN,50,2});
-    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{bbe::NodeType::CALL_BUILTIN,0,2});
-    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_COMMA},{bbe::NodeType::CALL_BUILTIN,51,2});
-    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_3},{bbe::NodeType::CALL_BUILTIN,100,1});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_9},{bbe::NodeType::CALL,0,2});
     kc.register_key(SDLK_COMMA,{bbe::NodeType::COMMA,0,2});
     kc.register_key(SDLK_LEFTBRACKET,{bbe::NodeType::PACKIND,0,1});
-    kc.register_key(SDLK_8,{bbe::NodeType::DEREF,0,1});
-    kc.register_key(SDLK_7,{bbe::NodeType::ADDROF,0,1});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::DEREF,0,1});
+    kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_7},{bbe::NodeType::ADDROF,0,1});
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_SLASH},{bbe::NodeType::FORK,0,3});
     
     kc.register_node(SDLK_A,{bbe::NodeType::ARG,0,0});
@@ -218,7 +221,8 @@ int main(){
     kc.register_node(SDLK_F,{bbe::NodeType::FNSYM,0,0});
     kc.register_node(SDLK_V,{bbe::NodeType::GETVAR,0,0});
     kc.register_node(SDLK_L,{bbe::NodeType::HAVEVAR,0,2});
-    kc.register_node(SDLK_Q,{bbe::NodeType::IMPORT_STUB,0,0});
+    kc.register_node(SDLK_Q,{bbe::NodeType::EXTERN_OR_INTRIN,0,0});
+    kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_Q},{bbe::NodeType::EXTERN_OR_INTRIN,bbe::Function::INTR_EXTERN,0});
     kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::PACK,0,1});
     
     proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_VOID],{u8"void"s,sfe::WHITE});
@@ -305,7 +309,9 @@ int main(){
                     }
                     edb.clear();
                     for(auto& f : proj.entities().functions()){
-                        f.recalculate_types(proj.entities(),edb);
+                        if(!f.is_intrin()){
+                            f.recalculate_types(proj.entities(),edb);
+                        }
                     }
                     for(const auto pel : ed.code().cursor().path_elements() | std::views::reverse){
                         if(pel.p->type() == sfe::VisualNodeType::F){
