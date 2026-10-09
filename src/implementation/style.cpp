@@ -5,8 +5,8 @@
 #include<cppp/uleb.hpp>
 #include<span>
 namespace sfe{
-    std::optional<const Name&> NameDatabase::optget_function_name(bbe::func_id fid) const{
-        if(auto it=fnames.find(fid);it!=fnames.end()){
+    std::optional<const Name&> NameDatabase::optget_function_name(bbe::func_id i) const{
+        if(auto it=fnames.find(i);it!=fnames.end()){
             return it->second;
         }
         return std::nullopt;
@@ -79,10 +79,10 @@ namespace sfe{
             dtnames.try_emplace(tdb[tid],cppp::str(namebuf,ns),deserialize_color(v));
         }
     }
-    void NameDatabase::serialize(cppp::bytes& b,const bbe::SCM& scm) const{
+    void NameDatabase::serialize(cppp::bytes& b) const{
         cppp::muleb128_w<std::uint64_t>(b,fnames.size());
         for(const auto& [k,v] : fnames){
-            cppp::muleb128_w<bbe::func_id>(b,scm.fcmap.at(k));
+            cppp::muleb128_w<bbe::func_id>(b,k);
             cppp::muleb128_w<std::uint64_t>(b,v.identifier().size());
             b.append(std::as_bytes(std::span{v.identifier()}));
             serialize_color(b,v.color());

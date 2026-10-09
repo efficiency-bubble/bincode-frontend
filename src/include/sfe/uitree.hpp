@@ -3,6 +3,7 @@
 #include<bbe/function.hpp>
 #include<cppp/variant.hpp>
 #include<bbe/ast.hpp>
+#include<bbe/gc.hpp>
 #include<type_traits>
 #include<concepts>
 #include<cstdint>
@@ -204,18 +205,21 @@ namespace sfe{
                             case MTSCompoundTypeCategory::FUNCTION_POINTER: {
                                 if(const bbe::TypeInfo* rt = _children[0uz].tcompute(tdb)){
                                     if(const bbe::TypeInfo* pt = _children[1uz].tcompute(tdb)){
-                                        return &tdb.function_of({*rt,*pt});
+                                        return &tdb.function_of({*rt,{*pt}});
                                     }else return nullptr;
                                 }else return nullptr;
                             }
                             case MTSCompoundTypeCategory::PACK: {
-                                cppp::fixed_array<const bbe::TypeInfo*> arr{_children.size()};
+                                bbe::TypePackBuilder tpb{_children.size()};
                                 for(std::size_t i=0uz;i<_children.size();++i){
                                     if(const bbe::TypeInfo* t = _children[i].tcompute(tdb)){
-                                        arr[i] = t;
-                                    }else return nullptr;
+                                        tpb.emplace(i,*t);
+                                    }else{
+                                        tpb.abandon(i);
+                                        return nullptr;
+                                    }
                                 }
-                                return &tdb.pack_of(std::move(arr));
+                                return &tdb.pack_of(std::move(tpb));
                             }
                             case MTSCompoundTypeCategory::POINTER: {
                                 if(const bbe::TypeInfo* c0 = _children[0uz].tcompute(tdb)){
@@ -233,13 +237,16 @@ namespace sfe{
                 if(const bbe::TypeInfo* rt=_children[0uz].tcompute(tdb)){
                     m_f().signature().set_return(*rt);
                 }
-                cppp::fixed_array<const bbe::TypeInfo*> sptv(_children.size() - 2uz);
+                bbe::TypePackBuilder sptvb{_children.size() - 2uz};
                 for(std::size_t i=2uz,j=0uz;i<_children.size();++i,++j){
                     if(const bbe::TypeInfo* at=_children[i].tcompute(tdb)){
-                        sptv[j] = at;
-                    }else return;
+                        sptvb.emplace(j,*at);
+                    }else{
+                        sptvb.abandon(j);
+                        return;
+                    }
                 }
-                m_f().signature().parameters() = std::move(sptv);
+                m_f().signature().parameters() = std::move(sptvb);
             }
             void fsetp(std::size_t i,const bbe::TypeInfo& r){
                 CPPP_ASSERT(data.tag() == VisualNodeType::F);
@@ -251,6 +258,18 @@ namespace sfe{
             void fsetr(const bbe::TypeInfo& r){
                 m_f().signature().set_return(r);
                 _children[0uz].tupdate(r);
+            }
+            // TODO: make a const member function
+            void ftraceself(bbe::EntitySweeper& swp){
+                swp.trace_function(data.get<VisualNodeType::F>());
+                _children[1uz].amoved(m_f().ast());
+            }
+            // TODO: make a const member function
+            void ptracef(bbe::EntitySweeper& swp){
+                CPPP_ASSERT(data.tag() == VisualNodeType::P);
+                for(VisualNode& f : _children){
+                    f.ftraceself(swp);
+                }
             }
             void paddf(bbe::Function& fn){
                 CPPP_ASSERT(data.tag() == VisualNodeType::P);

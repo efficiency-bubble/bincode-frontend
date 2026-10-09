@@ -94,16 +94,15 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                 switch(ke.key()){
                     case SDLK_BACKSPACE: {
-                        proj.entities().functions().erase(f.index());
                         ed.cursor().leave();
                         ed.cursor().selected().perasef(f);
                         break;
                     }
                     case SDLK_RETURN:
-                        ed.cursor().selected().faddp(proj.entities().types()[bbe::TypeDatabase::T_VOID]);
+                        ed.cursor().selected().faddp(proj.entities().types()[bbe::T_VOID]);
                         break;
                     case SDLK_F:
-                        if(bbe::type_id tid=f.ast().result_type();tid != bbe::TypeDatabase::T_ERROR){
+                        if(bbe::type_id tid=f.ast().result_type();tid != bbe::T_ERROR){
                             sel.fsetr(proj.entities().types()[tid]);
                         }
                         break;
@@ -115,8 +114,8 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                 switch(ke.key()){
                     case SDLK_RETURN: {
-                        const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
-                        bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{b_uint32,b_uint32});
+                        const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::T_UINT32]};
+                        bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{b_uint32,{b_uint32}});
                         fn.cname() = cppp::format<u8"fn{}"_ts>(fn.index());
                         proj.names().name_function(fn.index(),{u8"_unnamed"s,new_chroma()});
                         ed.root().paddf(fn);
@@ -170,7 +169,7 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
                 }else{
                     switch(ke.key()){
                         case SDLK_F:
-                            sel.dtset(proj.entities().types()[bbe::TypeDatabase::T_VOID]);
+                            sel.dtset(proj.entities().types()[bbe::T_VOID]);
                             break;
                     }
                 }
@@ -181,15 +180,15 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
 }
 cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
     switch(tid){
-        case bbe::TypeDatabase::T_VOID:
+        case bbe::T_VOID:
             return {0.7f};
-        case bbe::TypeDatabase::T_UINT32:
+        case bbe::T_UINT32:
             return {0.23137254901960785f,0.8509803921568627f,0.9215686274509803f};
-        case bbe::TypeDatabase::T_UINT64:
+        case bbe::T_UINT64:
             return {0.9215686274509803f,0.7647058823529411f,0.23137254901960785f};
-        case bbe::TypeDatabase::T_BOOL:
+        case bbe::T_BOOL:
             return {0.23529411764705882f,0.9176470588235294f,0.47058823529411764f};
-        case bbe::TypeDatabase::T_ERROR:
+        case bbe::T_ERROR:
             return {1.0f,0.0f,0.0f};
         default:
             if(tdb[tid].type() == bbe::TypeCategory::FUNCTION_POINTER){
@@ -225,15 +224,15 @@ int main(){
     kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_Q},{bbe::NodeType::EXTERN_OR_INTRIN,bbe::Function::INTR_EXTERN,0});
     kc.register_node({sfe::KeyModifiers::SHIFT,SDLK_8},{bbe::NodeType::PACK,0,1});
     
-    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_VOID],{u8"void"s,sfe::WHITE});
-    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_BOOL],{u8"bool"s,sfe::WHITE});
-    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_UINT32],{u8"uint32_t"s,sfe::WHITE});
-    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_UINT64],{u8"uint64_t"s,sfe::WHITE});
-    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_INT32],{u8"int32_t"s,sfe::WHITE});
-    proj.names().name_defined_type(proj.entities().types()[bbe::TypeDatabase::T_INT64],{u8"int64_t"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::T_VOID],{u8"void"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::T_BOOL],{u8"bool"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::T_UINT32],{u8"uint32_t"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::T_UINT64],{u8"uint64_t"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::T_INT32],{u8"int32_t"s,sfe::WHITE});
+    proj.names().name_defined_type(proj.entities().types()[bbe::T_INT64],{u8"int64_t"s,sfe::WHITE});
     
-    const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::TypeDatabase::T_UINT32]};
-    bbe::Function& fn = proj.entities().functions().emplace(u8"example"s,bbe::FunctionSignature{b_uint32,b_uint32});
+    const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::T_UINT32]};
+    bbe::Function& fn = proj.entities().functions().emplace(u8"example"s,bbe::FunctionSignature{b_uint32,{b_uint32}});
     proj.names().name_function(fn.index(),{u8"testfn"s,new_chroma()});
     fn.ast() = {bbe::NodeType::NTYPE};
     
@@ -354,7 +353,7 @@ int main(){
                 ed.graphics_context().draw_text(em.reason(),{10.0f,y},DIAG_TEXT_SCALE,{1.0f,0.0f,0.0f});
             }
             bbe::type_id rt = an.result_type();
-            ed.graphics_context().draw_text(rt==bbe::TypeDatabase::T_ERROR?u8"error-type"s:proj.names().display_type_name(proj.entities().types()[rt]),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(rt,proj.entities().types()));
+            ed.graphics_context().draw_text(rt==bbe::T_ERROR?u8"error-type"s:proj.names().display_type_name(proj.entities().types()[rt]),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(rt,proj.entities().types()));
         }
         ed.render_overlay();
         #ifdef SFE_ENABLE_ACHIEVEMENTS

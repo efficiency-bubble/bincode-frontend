@@ -40,14 +40,14 @@ namespace sfe::commands{
     }
     void save(Window& ed,void*){
         cppp::bytes save;
-        bbe::SCM scm{ed.project().entities().serialize(save)};
+        ed.project().entities().serialize(save);
         {
             cppp::BinaryFile bf{u8"testprog.bc"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
             bf.write(save);
             save.clear();
         }
         {
-            ed.project().names().serialize(save,scm);
+            ed.project().names().serialize(save);
             cppp::BinaryFile nf{u8"testprog.bc.nt"s,std::ios_base::out|std::ios_base::trunc|std::ios_base::binary};
             nf.write(save);
         }
@@ -205,9 +205,13 @@ namespace sfe::commands{
         adb
     #endif
     ){
-        bbe::TypeSweeper swp{ed.project().entities().begin_gc()};
-        ed.project().names().garbage_collect(swp);
+        std::size_t fn = ed.project().entities().functions().size();
+        std::size_t tn = ed.project().entities().types().size();
+        bbe::EntitySweeper swp{ed.project().entities().begin_gc()};
+        ed.code().root().ptracef(swp);
+        ed.project().names().update(swp);
         ed.project().entities().end_gc(std::move(swp));
+        cppp::println<u8"Collected {} function(s) and {} type(s)"_ts>(fn-ed.project().entities().functions().size(),tn-ed.project().entities().types().size());
         #ifdef SFE_ENABLE_ACHIEVEMENTS
         AchievementDB& d = *static_cast<AchievementDB*>(adb);
         d.queue.complete(d.garbage_collected);

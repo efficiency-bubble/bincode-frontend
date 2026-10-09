@@ -28,16 +28,16 @@ namespace sfe{
     };
     class NameDatabase{
         struct eq_mtk{
-            bool operator()(bbe::MutableTypeKey tr,bbe::MutableTypeKey tr2) const{
+            bool operator()(bbe::TraceableReference<bbe::TypeInfo> tr,bbe::TraceableReference<bbe::TypeInfo> tr2) const{
                 return tr == tr2;
             }
-            bool operator()(bbe::MutableTypeKey tr,const bbe::TypeInfo& ti) const{
+            bool operator()(bbe::TraceableReference<bbe::TypeInfo> tr,const bbe::TypeInfo& ti) const{
                 return tr.get() == &ti;
             }
             using is_transparent = void;
         };
         struct hash_mtk{
-            constexpr std::size_t operator()(bbe::MutableTypeKey r) const noexcept{
+            constexpr std::size_t operator()(bbe::TraceableReference<bbe::TypeInfo> r) const noexcept{
                 return static_cast<std::size_t>(r->hash().value());
             }
             constexpr std::size_t operator()(const bbe::TypeInfo& i) const noexcept{
@@ -46,21 +46,36 @@ namespace sfe{
             using is_transparent = void;
         };
         std::unordered_map<bbe::func_id,Name> fnames;
-        std::unordered_map<bbe::MutableTypeKey,Name,hash_mtk,eq_mtk> dtnames;
+        std::unordered_map<bbe::TraceableReference<bbe::TypeInfo>,Name,hash_mtk,eq_mtk> dtnames;
         public:
             NameDatabase() = default;
             NameDatabase(const bbe::TypeDatabase&,cppp::frozen_byte_view&);
-            void garbage_collect(const bbe::TypeSweeper& swp){
-                auto it = dtnames.begin();
-                const auto done = dtnames.end();
-                while(it != done){
-                    if(swp.is_marked(*it->first)){
-                        it->first.update(swp);
-                        ++it;
-                    }else{
-                        it = dtnames.erase(it);
+            void update(const bbe::EntitySweeper& swp){
+                {
+                    auto it = dtnames.begin();
+                    const auto done = dtnames.end();
+                    while(it != done){
+                        if(swp.is_type_marked(*it->first)){
+                            swp.update_type_ref_to_new_location(it->first);
+                            ++it;
+                        }else{
+                            it = dtnames.erase(it);
+                        }
                     }
                 }
+                std::unordered_map<bbe::func_id,Name> fnames2;
+                {
+                    auto it = fnames.begin();
+                    const auto done = fnames.end();
+                    while(it != done){
+                        auto node{fnames.extract(it++)};
+                        if(swp.is_function_marked(node.key())){
+                            node.key() = swp.new_function_location(node.key());
+                            fnames2.insert(std::move(node));
+                        }
+                    }
+                }
+                fnames = std::move(fnames2);
             }
             void name_function(bbe::func_id fid,Name n){
                 fnames.try_emplace(fid,std::move(n));
@@ -79,6 +94,6 @@ namespace sfe{
                 return dtnames.at(t);
             }
             cppp::str display_type_name(const bbe::TypeInfo& ti) const;
-            void serialize(cppp::bytes&,const bbe::SCM&) const;
+            void serialize(cppp::bytes&) const;
     };
 }
