@@ -10,6 +10,7 @@
 #include<bbe/bbe.hpp>
 #include<filesystem>
 #include<cstring>
+#include<random>
 using namespace std::literals;
 using namespace cppp::literals;
 sgl::FreeType ftlib;
@@ -223,6 +224,55 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
             return {0.8588235294117647f,0.23137254901960785f,0.9215686274509803f};
     }
 }
+using hrc = std::chrono::high_resolution_clock;
+using fs = std::chrono::duration<float>;
+class LightningScheduler{
+    std::default_random_engine re;
+    float duty;
+    std::uniform_real_distribution<float> distrib;
+    float next;
+    float active = 0.0f;
+    std::size_t index;
+    constexpr static std::array<std::span<const float>,6uz> lt_patterns{
+        std::define_static_array(std::array{0.1f,0.4f,0.9f}),
+        std::define_static_array(std::array{0.1f,0.7f,0.9f}),
+        std::define_static_array(std::array{0.3f}),
+        std::define_static_array(std::array{0.2f,0.3f,0.4f,0.9f}),
+        std::define_static_array(std::array{0.1f,0.8f})
+    };
+    public:
+        LightningScheduler(float d,float s,float t) : duty(d), distrib(s,t){
+            reset();
+        }
+        void reset(){
+            next = distrib(re);
+            index = std::uniform_int_distribution<std::size_t>{0uz,lt_patterns.size()-1uz}(re);
+        }
+        std::span<const float> pattern() const{
+            return lt_patterns[index];
+        }
+        bool is_active() const{
+            return active;
+        }
+        float time_active() const{
+            return duty - active;
+        }
+        void tick(float dt){
+            if(active){
+                if((active -= dt) < 0.0f){
+                    next += active;
+                    active = 0.0f;
+                }
+            }else{
+                next -= dt;
+            }
+            if(next <= 0.0f){
+                next += distrib(re);
+                index = std::uniform_int_distribution<std::size_t>{0uz,lt_patterns.size()-1uz}(re);
+                active = duty;
+            }
+        }
+};
 int main(){
     if(!std::filesystem::exists(u8"timing_helper.o"sv) || std::filesystem::last_write_time(u8"timing_helper.cpp"sv) > std::filesystem::last_write_time(u8"timing_helper.o"sv)){
         if(int ret=std::system("g++ -O3 -m64 -std=c++26 -s -c timing_helper.cpp -o timing_helper.o")){
@@ -312,11 +362,20 @@ int main(){
     const float MIN_ZOOM = 0.05f;
     float y_scroll = 0.0f;
     
+    const auto bgn = hrc::now();
+    
+    LightningScheduler schd{1.0f,7.0f,14.0f};
+    const float lt_dropoff = 199.5f;
+    
+    float last_t = 0.0f;
     while(true){
         const bool* keys = SDL_GetKeyboardState(nullptr);
         for(const auto& e : sgl::events()){
             switch(e.type){
                 case SDL_EVENT_QUIT: goto cleanup;
+                case SDL_EVENT_MOUSE_MOTION:
+                    ed.graphics_context().flashlight().set_position(cppp::fvec2{e.motion.x,e.motion.y}*ed.system_window().display_scale());
+                    break;
                 case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
                     glViewport(0,0,e.window.data1,e.window.data2);
                     break;
@@ -360,6 +419,10 @@ int main(){
                     break;
             }
         }
+        float t = std::chrono::duration_cast<fs>(hrc::now()-bgn).count();
+        float dt = t-last_t;
+        last_t = t;
+        ed.graphics_context().flashlight().set_intensity(0.2f*(0.9f*std::sin(t)+std::sin(t/7.0f))+0.8f);
         if(ed.color_picker().is_open()){
             cppp::fvec3 hsv = ed.color_picker().get_hsv();
             hsv.x() += (keys[SDL_SCANCODE_LSHIFT]-keys[SDL_SCANCODE_LCTRL]) * 0.02f;
@@ -389,6 +452,16 @@ int main(){
         #ifdef SFE_ENABLE_ACHIEVEMENTS
         adb.queue.render(ed.graphics_context(),{10.0f,10.0f});
         #endif
+        schd.tick(dt);
+        if(schd.is_active()){
+            float lightning_effect = 0.0f;
+            for(const float reference : schd.pattern()){
+                float diff = reference - schd.time_active();
+                float decay = diff * diff * lt_dropoff;
+                lightning_effect += std::max(0.0f,.95f - decay);
+            }
+            ed.graphics_context().rect({0.0f,0.0f},ed.graphics_context().cmap().win_size(),{1.0f,1.0f,1.0f,lightning_effect});
+        }
         ed.system_window().flip();
     }
     }

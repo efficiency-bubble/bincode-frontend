@@ -4,12 +4,46 @@
 #include<sgl/draw/rect.hpp>
 #include"color-picker-drawer.hpp"
 namespace sfe{
-    constexpr inline cppp::fvec3 COMPAL_COLOR{0.2549019607843137f,0.2549019607843137f,0.2549019607843137f};
+    constexpr inline cppp::fvec3 COMPAL_COLOR{0.09f,0.09f,0.09f};
     constexpr inline cppp::fvec3 WHITE{1.0f};
     constexpr inline cppp::fvec3 BLACK{0.0f};
+    class SpookyFlashlight{
+        cppp::fvec2 _position;
+        float _intensity;
+        public:
+            void set_position(cppp::fvec2 pos){
+                _position = pos;
+            }
+            void set_intensity(float intens){
+                _intensity = intens;
+            }
+            cppp::fvec2 position() const{
+                return _position;
+            }
+            float intensity() const{
+                return _intensity;
+            }
+    };
+    class SDFRendererWithTorch{
+        mutable sgl::GLBuffer vbo;
+        sgl::VAO vao;
+        mutable sgl::Program p;
+        public:
+            SDFRendererWithTorch();
+            void draw_stretched(const sgl::Texture<sgl::TextureType::TWO_D>& sdf,cppp::fvec2 pos,cppp::fvec2 size,cppp::fvec4 color,SpookyFlashlight fl) const;
+            void draw_stretched(const sgl::Texture<sgl::TextureType::TWO_D>& sdf,cppp::fvec2 pos,cppp::fvec2 size,cppp::fvec3 color,SpookyFlashlight fl) const{
+                draw_stretched(sdf,pos,size,{color,1.0f},fl);
+            }
+            void draw(const sgl::Texture<sgl::TextureType::TWO_D>& sdf,cppp::fvec2 pos,cppp::fvec2 size_per_px,cppp::fvec4 color,SpookyFlashlight fl) const{
+                draw_stretched(sdf,pos,size_per_px*cppp::fvec2(sdf.size()),color,fl);
+            }
+            void draw(const sgl::Texture<sgl::TextureType::TWO_D>& sdf,cppp::fvec2 pos,cppp::fvec2 size_per_px,cppp::fvec3 color,SpookyFlashlight fl) const{
+                draw(sdf,pos,size_per_px,{color,1.0f},fl);
+            }
+    };
     class WrappingSDFTextRenderer{
         mutable sgl::Shaper sh;
-        sgl::SDFRenderer sr;
+        SDFRendererWithTorch sr;
         static cppp::fvec2 yf(cppp::fvec2 x){
             return {x.x(),-x.y()};
         }
@@ -17,8 +51,8 @@ namespace sfe{
             sgl::Shaper& shaper() const{
                 return sh;
             }
-            void draw_text(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec4 color,const sgl::CachedFont& cf,const sgl::CoordinateMap& cm) const;
-            void draw_wrapped_text(cppp::sv text,cppp::fvec2& pos,float right,float left,float gap,float sca,cppp::fvec4 color,const sgl::CachedFont& cf,const sgl::CoordinateMap& cm) const;
+            void draw_text(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec4 color,const sgl::CachedFont& cf,const sgl::CoordinateMap& cm,SpookyFlashlight fl) const;
+            void draw_wrapped_text(cppp::sv text,cppp::fvec2& pos,float right,float left,float gap,float sca,cppp::fvec4 color,const sgl::CachedFont& cf,const sgl::CoordinateMap& cm,SpookyFlashlight fl) const;
     };
     class GraphicsContext{
         SVPickerSquareDrawer rb;
@@ -28,13 +62,20 @@ namespace sfe{
         sgl::CoordinateMap cm;
         sgl::MonochromeRectDrawer mrd;
         float scale;
+        SpookyFlashlight fl;
         public:
             GraphicsContext(cppp::fvec2 ws,sgl::CachedFont&& f,float scale) : cf(std::move(f)), cm(ws), scale(scale){}
+            SpookyFlashlight& flashlight(){
+                return fl;
+            }
+            const SpookyFlashlight& flashlight() const{
+                return fl;
+            }
             void update_window(cppp::fvec2 ws){
                 cm.update(ws);
             }
             void draw_wrapped_text_at_cursor(cppp::sv text,cppp::fvec2& pos,float right,float left,float sca,cppp::fvec4 color) const{
-                tr.draw_wrapped_text(text,pos,right,left,line_height()*sca,scale*sca,color,cf,cm);
+                tr.draw_wrapped_text(text,pos,right,left,line_height()*sca,scale*sca,color,cf,cm,fl);
             }
             void draw_wrapped_text_at_cursor(cppp::sv text,cppp::fvec2& pos,float right,float left,float sca,cppp::fvec3 color) const{
                 draw_wrapped_text_at_cursor(text,pos,right,left,sca,{color,1.0f});
@@ -46,7 +87,7 @@ namespace sfe{
                 draw_wrapped_text(text,pos,right,left,sca,{color,1.0f});
             }
             void draw_text_at_cursor(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec4 color) const{
-                tr.draw_text(text,pos,scale*sca,color,cf,cm);
+                tr.draw_text(text,pos,scale*sca,color,cf,cm,fl);
             }
             void draw_text_at_cursor(cppp::sv text,cppp::fvec2& pos,float sca,cppp::fvec3 color) const{
                 draw_text_at_cursor(text,pos,sca,{color,1.0f});
