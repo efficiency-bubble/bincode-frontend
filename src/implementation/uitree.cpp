@@ -85,7 +85,7 @@ namespace sfe{
                 break;
             case OVERCALL:
                 if(auto osn=names.optget_overload_set_name(a().getp32())){
-                    gc.draw_wrapped_text_at_cursor(osn->identifier(),pos,right,left,1.0f,WHITE);
+                    gc.draw_wrapped_text_at_cursor(osn->identifier(),pos,right,left,1.0f,osn->color());
                 }else{
                     gc.draw_wrapped_text_at_cursor(cppp::format<u8"[overload set {}]"_ts>(a().getp32()),pos,right,left,1.0f,RED);
                 }
