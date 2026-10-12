@@ -23,8 +23,8 @@ namespace sfe::commands{
         ed.open_command_palette();
     }
     void rename_selection(Window& ed,void*){
-        if(ed.code().cursor().selected().type() == VisualNodeType::F){
-            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.project().names().get_function_name(ed.code().cursor().selected().f().index()));
+        if(ed.code().cursor().selected().type() == VisualNodeType::O){
+            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.project().names().get_overload_set_name(ed.code().cursor().selected().o().index()));
         }
     }
     void re_cname_selection(Window& ed,void*){
@@ -33,9 +33,9 @@ namespace sfe::commands{
         }
     }
     void recolor_selection(Window& ed,void*){
-        if(ed.code().cursor().selected().type() == VisualNodeType::F){
+        if(ed.code().cursor().selected().type() == VisualNodeType::O){
             ed.remove_textbox();
-            ed.color_picker().open(ed.project().names().get_function_name(ed.code().cursor().selected().f().index()).color());
+            ed.color_picker().open(ed.project().names().get_overload_set_name(ed.code().cursor().selected().o().index()).color());
         }
     }
     void save(Window& ed,void*){
@@ -129,7 +129,7 @@ namespace sfe::commands{
                 }
                 if(entry == std::numeric_limits<bbe::func_id>::max()) throw std::logic_error("No entry point found"s);
                 µs delta = time_execution([&]{
-                    bbe::inter::stringify(compiled.call(entry,bbe::inter::uint32v{30}),rbuf);
+                    bbe::inter::stringify(compiled.call(entry,{bbe::inter::uint32v{30}}),rbuf);
                 });
                 std::span<int> a;
                 if(delta.count() < 1000){

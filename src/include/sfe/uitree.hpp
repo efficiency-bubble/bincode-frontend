@@ -28,6 +28,7 @@ namespace sfe{
     enum class VisualNodeType{
         A SFE_ANNOT(bbe::ASTNode*),
         F SFE_ANNOT(bbe::Function*),
+        O SFE_ANNOT(bbe::OverloadSet*),
         P SFE_ANNOT(bbe::ProjectEntitiesPool*),
         DT SFE_ANNOT(const bbe::TypeInfo*),
         CT SFE_ANNOT(MTSCompoundTypeCategory)
@@ -54,6 +55,9 @@ namespace sfe{
         }
         bbe::ProjectEntitiesPool& m_p(){
             return *data.get<VisualNodeType::P>();
+        }
+        bbe::OverloadSet& m_o(){
+            return *data.get<VisualNodeType::O>();
         }
         const bbe::TypeInfo*& m_dt(){
             return data.get<VisualNodeType::DT>();
@@ -133,9 +137,14 @@ namespace sfe{
                     _children.emplace_back(vn_from_unknown,par);
                 }
             }
-            VisualNode(bbe::ProjectEntitiesPool& f) : data(cppp::in_place_etor<VisualNodeType::P>,&f){
-                for(bbe::Function& fn : f.functions()){
+            VisualNode(bbe::ProjectEntitiesPool& p) : data(cppp::in_place_etor<VisualNodeType::P>,&p){
+                for(bbe::OverloadSet& fn : p.overloads()){
                     _children.emplace_back(fn);
+                }
+            }
+            VisualNode(bbe::OverloadSet& o) : data(cppp::in_place_etor<VisualNodeType::O>,&o){
+                for(const bbe::Function& f : o){
+                    _children.emplace_back(const_cast<bbe::Function&>(f));
                 }
             }
             VisualNode(MTSCompoundTypeCategory mctc) : data(cppp::in_place_etor<VisualNodeType::CT>,mctc){}
@@ -157,6 +166,7 @@ namespace sfe{
             void adraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,float right,float left,bool altmode) const;
             void tdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,float right,float left,bool altmode) const;
             void fdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,bool altmode) const;
+            void odraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,bool altmode) const;
             void pdraw(const GraphicsContext&,const bbe::ErrorDatabase&,const NameDatabase&,const UICursor&,cppp::fvec2& pos,bool altmode) const;
             void clear(){
                 _children.clear();
@@ -169,6 +179,9 @@ namespace sfe{
             }
             cppp::str& fcname(){
                 return m_f().cname();
+            }
+            const bbe::OverloadSet& o() const{
+                return *data.get<VisualNodeType::O>();
             }
             const bbe::ProjectEntitiesPool& p() const{
                 return *data.get<VisualNodeType::P>();
@@ -265,18 +278,38 @@ namespace sfe{
                 _children[1uz].amoved(m_f().ast());
             }
             // TODO: make a const member function
-            void ptracef(bbe::EntitySweeper& swp){
-                CPPP_ASSERT(data.tag() == VisualNodeType::P);
+            void otracef(bbe::EntitySweeper& swp){
+                CPPP_ASSERT(data.tag() == VisualNodeType::O);
                 for(VisualNode& f : _children){
                     f.ftraceself(swp);
                 }
             }
-            void paddf(bbe::Function& fn){
+            // TODO: make a const member function
+            void ptracef(bbe::EntitySweeper& swp){
                 CPPP_ASSERT(data.tag() == VisualNodeType::P);
+                for(VisualNode& o : _children){
+                    o.otracef(swp);
+                }
+            }
+            void paddo(bbe::OverloadSet& os){
+                CPPP_ASSERT(data.tag() == VisualNodeType::P);
+                _children.emplace_back(os);
+            }
+            void peraseo(const bbe::OverloadSet& os){
+                CPPP_ASSERT(data.tag() == VisualNodeType::P);
+                #if __cpp_lib_parallel_algorithm >= 202506L
+                #warning GCC updated! change this to use std::ranges::find_if
+                #endif
+                _children.erase(std::find_if(std::execution::unseq,_children.begin(),_children.end(),[p=&os](const VisualNode& vn){
+                    return &vn.o() == p;
+                }));
+            }
+            void oaddf(bbe::Function& fn){
+                m_o().add(fn);
                 _children.emplace_back(fn);
             }
-            void perasef(const bbe::Function& fn){
-                CPPP_ASSERT(data.tag() == VisualNodeType::P);
+            void oerasef(const bbe::Function& fn){
+                m_o().remove(fn);
                 #if __cpp_lib_parallel_algorithm >= 202506L
                 #warning GCC updated! change this to use std::ranges::find_if
                 #endif
@@ -387,8 +420,8 @@ namespace sfe{
             }
             void prepopulate(){
                 _children.clear();
-                for(auto& fn : m_p().functions()){
-                    _children.emplace_back(fn);
+                for(bbe::OverloadSet& os : m_p().overloads()){
+                    _children.emplace_back(os);
                 }
             }
             bool is_placeholder() const{

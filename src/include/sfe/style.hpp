@@ -3,7 +3,9 @@
 #include<cppp/vector.hpp>
 #include<cppp/object-view.hpp>
 #include<cppp/bytearray.hpp>
-#include<bbe/project_entity_pool.hpp>
+#include<bbe/gcfwd.hpp>
+#include<bbe/idfwd.hpp>
+#include<bbe/type-database.hpp>
 #include<unordered_map>
 #include<optional>
 #include<cstdint>
@@ -45,7 +47,7 @@ namespace sfe{
             }
             using is_transparent = void;
         };
-        std::unordered_map<bbe::func_id,Name> fnames;
+        std::unordered_map<bbe::over_id,Name> onames;
         std::unordered_map<bbe::TraceableReference<bbe::TypeInfo>,Name,hash_mtk,eq_mtk> dtnames;
         public:
             NameDatabase() = default;
@@ -63,33 +65,33 @@ namespace sfe{
                         }
                     }
                 }
-                std::unordered_map<bbe::func_id,Name> fnames2;
+                std::unordered_map<bbe::over_id,Name> onames2;
                 {
-                    auto it = fnames.begin();
-                    const auto done = fnames.end();
+                    auto it = onames.begin();
+                    const auto done = onames.end();
                     while(it != done){
-                        auto node{fnames.extract(it++)};
-                        if(swp.is_function_marked(node.key())){
-                            node.key() = swp.new_function_location(node.key());
-                            fnames2.insert(std::move(node));
+                        auto node{onames.extract(it++)};
+                        if(swp.is_overload_set_marked(node.key())){
+                            node.key() = swp.new_overload_set_location(node.key());
+                            onames2.insert(std::move(node));
                         }
                     }
                 }
-                fnames = std::move(fnames2);
+                onames = std::move(onames2);
             }
-            void name_function(bbe::func_id fid,Name n){
-                fnames.try_emplace(fid,std::move(n));
+            void name_overload_set(bbe::over_id oid,Name n){
+                onames.try_emplace(oid,std::move(n));
             }
             void name_defined_type(const bbe::TypeInfo& ti,Name n){
                 dtnames.try_emplace(ti,std::move(n));
             }
-            const Name& get_function_name(bbe::func_id fid) const{
-                return fnames.at(fid);
+            const Name& get_overload_set_name(bbe::over_id oid) const{
+                return onames.at(oid);
             }
-            Name& get_function_name(bbe::func_id fid){
-                return fnames.at(fid);
+            Name& get_overload_set_name(bbe::over_id oid){
+                return onames.at(oid);
             }
-            std::optional<const Name&> optget_function_name(bbe::func_id fid) const;
+            std::optional<const Name&> optget_overload_set_name(bbe::over_id oid) const;
             const Name& get_defined_type_name(const bbe::TypeInfo& t) const{
                 return dtnames.at(t);
             }

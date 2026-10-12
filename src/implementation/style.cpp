@@ -1,12 +1,13 @@
 #include<sfe/style.hpp>
 #include<sfe/commons.hpp>
+#include<bbe/type-database.hpp>
 #include<cppp/format.hpp>
 #include<cppp/binary.hpp>
 #include<cppp/uleb.hpp>
 #include<span>
 namespace sfe{
-    std::optional<const Name&> NameDatabase::optget_function_name(bbe::func_id i) const{
-        if(auto it=fnames.find(i);it!=fnames.end()){
+    std::optional<const Name&> NameDatabase::optget_overload_set_name(bbe::over_id i) const{
+        if(auto it=onames.find(i);it!=onames.end()){
             return it->second;
         }
         return std::nullopt;
@@ -66,10 +67,10 @@ namespace sfe{
     NameDatabase::NameDatabase(const bbe::TypeDatabase& tdb,cppp::frozen_byte_view& v){
         std::uint64_t nfentries = cppp::muleb128_r<std::uint64_t>(v);
         while(nfentries--){
-            bbe::func_id fid = cppp::muleb128_r<bbe::func_id>(v);
+            bbe::over_id oid = cppp::muleb128_r<bbe::over_id>(v);
             std::uint64_t ns = cppp::muleb128_r<std::uint64_t>(v);
             const char8_t* namebuf = std::start_lifetime_as_array<char8_t>(v.read(ns),ns);
-            fnames.try_emplace(fid,cppp::str(namebuf,ns),deserialize_color(v));
+            onames.try_emplace(oid,cppp::str(namebuf,ns),deserialize_color(v));
         }
         std::uint64_t ntentries = cppp::muleb128_r<std::uint64_t>(v);
         while(ntentries--){
@@ -80,9 +81,9 @@ namespace sfe{
         }
     }
     void NameDatabase::serialize(cppp::bytes& b) const{
-        cppp::muleb128_w<std::uint64_t>(b,fnames.size());
-        for(const auto& [k,v] : fnames){
-            cppp::muleb128_w<bbe::func_id>(b,k);
+        cppp::muleb128_w<std::uint64_t>(b,onames.size());
+        for(const auto& [k,v] : onames){
+            cppp::muleb128_w<bbe::over_id>(b,k);
             cppp::muleb128_w<std::uint64_t>(b,v.identifier().size());
             b.append(std::as_bytes(std::span{v.identifier()}));
             serialize_color(b,v.color());

@@ -30,45 +30,55 @@ cppp::fvec3 new_chroma(){
     if(i == chromas.size()) i = 0uz;
     return ret;
 }
+bool handle_numeric(sfe::VisualNode& sel,SDL_Keycode key,sfe::Toast& toast){
+    switch(key){
+        case SDLK_BACKSPACE:
+            if(sel.a().getp32()){
+                sel.asetp32(sel.a().getp32() / 10);
+                return true;
+            }
+            break;
+        case SDLK_0: case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
+        case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9: {
+            std::uint64_t new_num = static_cast<std::uint64_t>(sel.a().getp32())*10+static_cast<std::uint64_t>(key-SDLK_0);
+            if(std::in_range<std::uint32_t>(new_num)){
+                sel.asetp32(static_cast<std::uint32_t>(new_num));
+            }else{
+                using namespace std::chrono_literals;
+                toast.reset(u8"Overflow!"s,810ms);
+            }
+            return true;
+        }
+    }
+    return false;
+}
 bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::NodeKeyConfig& kc,sfe::Keypress ke){
     if(kc.handle(ed,ke)) return true;
     sfe::VisualNode& sel = ed.cursor().selected();
     switch(sel.type()){
         case sfe::VisualNodeType::A: {
-            const bbe::ASTNode& a = sel.a();
-            switch(a.type()){
+            switch(sel.a().type()){
                 using enum bbe::NodeType;
                 case BOOL:
                     if(ke.key() == SDLK_RETURN){
-                        sel.asetp32(1_u32-a.getp32());
+                        sel.asetp32(1_u32-sel.a().getp32());
                         return true;
                     }
                     break;
                 case UINT32: case FNSYM: case COMMA: case PACKIND: case GETVAR: case HAVEVAR: case EXTERN_OR_INTRIN:
                     if(ed.cursor().is_after()){
                         if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
-                            switch(ke.key()){
-                                case SDLK_BACKSPACE:
-                                    if(a.getp32()){
-                                        sel.asetp32(a.getp32() / 10);
-                                        return true;
-                                    }
-                                    break;
-                                case SDLK_0: case SDLK_1: case SDLK_2: case SDLK_3: case SDLK_4:
-                                case SDLK_5: case SDLK_6: case SDLK_7: case SDLK_8: case SDLK_9: {
-                                    std::uint64_t new_num = static_cast<std::uint64_t>(a.getp32())*10+static_cast<std::uint64_t>(ke.key()-SDLK_0);
-                                    if(std::in_range<std::uint32_t>(new_num)){
-                                        sel.asetp32(static_cast<std::uint32_t>(new_num));
-                                    }else{
-                                        using namespace std::chrono_literals;
-                                        toast.reset(u8"Overflow!"s,810ms);
-                                    }
-                                    return true;
-                                }
-                            }
+                            if(handle_numeric(sel,ke.key(),toast)) return true;
                         }
                     }
                     break;
+                case OVERCALL:
+                    if(ed.cursor().is_after()){
+                        if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
+                            if(handle_numeric(sel,ke.key(),toast)) return true;
+                        }
+                    }
+                    [[fallthrough]];
                 case CALL:
                     switch(ke.key()){
                         case SDLK_RETURN:
@@ -90,16 +100,15 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             break;
         }
         case sfe::VisualNodeType::F: {
-            const bbe::Function& f = ed.cursor().selected().f();
+            const bbe::Function& f = sel.f();
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                 switch(ke.key()){
-                    case SDLK_BACKSPACE: {
+                    case SDLK_BACKSPACE:
                         ed.cursor().leave();
-                        ed.cursor().selected().perasef(f);
+                        ed.cursor().selected().oerasef(f);
                         break;
-                    }
                     case SDLK_RETURN:
-                        ed.cursor().selected().faddp(proj.entities().types()[bbe::T_VOID]);
+                        sel.faddp(proj.entities().types()[bbe::T_VOID]);
                         break;
                     case SDLK_F:
                         if(bbe::type_id tid=f.ast().result_type();tid != bbe::T_ERROR){
@@ -110,15 +119,32 @@ bool keydown(sfe::Toast& toast,sfe::Project& proj,sfe::CodeEntry& ed,const sfe::
             }
             break;
         }
-        case sfe::VisualNodeType::P: {
+        case sfe::VisualNodeType::O: {
+            const bbe::OverloadSet& o = sel.o();
             if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
                 switch(ke.key()){
+                    case SDLK_BACKSPACE:
+                        ed.cursor().leave();
+                        ed.cursor().selected().peraseo(o);
+                        break;
                     case SDLK_RETURN: {
                         const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::T_UINT32]};
                         bbe::Function& fn = proj.entities().functions().emplace(bbe::FunctionSignature{b_uint32,{b_uint32}});
                         fn.cname() = cppp::format<u8"fn{}"_ts>(fn.index());
-                        proj.names().name_function(fn.index(),{u8"_unnamed"s,new_chroma()});
-                        ed.root().paddf(fn);
+                        sel.oaddf(fn);
+                        break;
+                    }
+                }
+            }
+            break;
+        }
+        case sfe::VisualNodeType::P: {
+            if(!(ke.mods()&(sfe::KeyModifiers::CTRL|sfe::KeyModifiers::SHIFT|sfe::KeyModifiers::ALT))){
+                switch(ke.key()){
+                    case SDLK_RETURN: {
+                        bbe::OverloadSet& os = proj.entities().overloads().emplace();
+                        proj.names().name_overload_set(os.index(),{u8"_unnamed"s,new_chroma()});
+                        ed.root().paddo(os);
                         break;
                     }
                 }
@@ -214,6 +240,7 @@ int main(){
     kc.register_key({sfe::KeyModifiers::SHIFT,SDLK_SLASH},{bbe::NodeType::FORK,0,3});
     
     kc.register_node(SDLK_A,{bbe::NodeType::ARG,0,0});
+    kc.register_node(SDLK_C,{bbe::NodeType::OVERCALL,0,0});
     kc.register_node(SDLK_E,{bbe::NodeType::BOOL,0,0});
     kc.register_node(SDLK_D,{bbe::NodeType::UINT32,0,0});
     kc.register_node(SDLK_S,{bbe::NodeType::SINT32,0,0});
@@ -231,10 +258,14 @@ int main(){
     proj.names().name_defined_type(proj.entities().types()[bbe::T_INT32],{u8"int32_t"s,sfe::WHITE});
     proj.names().name_defined_type(proj.entities().types()[bbe::T_INT64],{u8"int64_t"s,sfe::WHITE});
     
-    const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::T_UINT32]};
-    bbe::Function& fn = proj.entities().functions().emplace(u8"example"s,bbe::FunctionSignature{b_uint32,{b_uint32}});
-    proj.names().name_function(fn.index(),{u8"testfn"s,new_chroma()});
-    fn.ast() = {bbe::NodeType::NTYPE};
+    {
+        const bbe::TypeInfo& b_uint32{proj.entities().types()[bbe::T_UINT32]};
+        bbe::Function& fn = proj.entities().functions().emplace(u8"example"s,bbe::FunctionSignature{b_uint32,{b_uint32}});
+        bbe::OverloadSet& os = proj.entities().overloads().emplace();
+        os.add(fn);
+        proj.names().name_overload_set(os.index(),{u8"testfn"s,new_chroma()});
+        fn.ast() = {bbe::NodeType::NTYPE};
+    }
     
     SDL_SetHint(SDL_HINT_INVALID_PARAM_CHECKS,"1");
     SDL_SetAppMetadata("edBCC (SGL)",nullptr,"edbcc.cpp");
@@ -275,7 +306,6 @@ int main(){
     ed.add_command(u8"debug selection"s,SDLK_F7,sfe::commands::debug_selection);
     ed.add_command(u8"compile code for x86"s,SDLK_F6,{sfe::commands::compile_and_run,&edb});
     ed.add_command(u8"interpret code"s,SDLK_F5,{sfe::commands::interpret,&edb});
-    fn.recalculate_types(proj.entities(),edb);
     
     const float SCROLL_SENSITIVITY = 1.0f;
     const float ZOOM_SENSITIVITY = 0.3f;

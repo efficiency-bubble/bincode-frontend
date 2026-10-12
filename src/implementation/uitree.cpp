@@ -64,15 +64,11 @@ namespace sfe{
                 _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
                 cursor_pos = pos;
                 break;
-            case FNSYM: {
-                if(auto fname = names.optget_function_name(a().getp32())){
-                    gc.draw_wrapped_text_at_cursor(fname->identifier(),pos,right,left,1.0f,fname->color());
-                }else{
-                    gc.draw_wrapped_text_at_cursor(cppp::format<u8"[unknown function {}]"_ts>(a().getp32()),pos,right,left,1.0f,RED);
-                }
+            case FNSYM:
+                // TODO
+                gc.draw_wrapped_text_at_cursor(cppp::format<u8"[function {}]"_ts>(a().getp32()),pos,right,left,1.0f,RED);
                 cursor_pos = pos;
                 break;
-            }
             case BOOL:
                 gc.draw_wrapped_text_at_cursor(a().getp32()?u8"true"s:u8"false"s,pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
@@ -86,6 +82,20 @@ namespace sfe{
                 gc.draw_wrapped_text_at_cursor(cppp::format<u8"{}"_ts>(std::bit_cast<std::int32_t>(a().getp32())),pos,right,left,1.0f,WHITE);
                 cursor_pos = pos;
                 gc.draw_wrapped_text_at_cursor(u8"sdw"sv,pos,right,left,0.5f,GRAY);
+                break;
+            case OVERCALL:
+                if(auto osn=names.optget_overload_set_name(a().getp32())){
+                    gc.draw_wrapped_text_at_cursor(osn->identifier(),pos,right,left,1.0f,WHITE);
+                }else{
+                    gc.draw_wrapped_text_at_cursor(cppp::format<u8"[overload set {}]"_ts>(a().getp32()),pos,right,left,1.0f,RED);
+                }
+                gc.draw_wrapped_text_at_cursor(u8"("sv,pos,right,left,1.0f,WHITE);
+                for(std::size_t i=0uz;i<_children.size();++i){
+                    if(i) gc.draw_wrapped_text_at_cursor(u8","sv,pos,right,left,1.0f,WHITE);
+                    _children[i].adraw(gc,errors,names,cursor,pos,right,left,altmode);
+                }
+                gc.draw_wrapped_text_at_cursor(u8")"sv,pos,right,left,1.0f,WHITE);
+                cursor_pos = pos;
                 break;
             case CALL:
                 _children[0uz].adraw(gc,errors,names,cursor,pos,right,left,altmode);
@@ -251,9 +261,7 @@ namespace sfe{
         float right_x;
         {
             cppp::fvec2 line_1{pos};
-            const auto& fn = names.get_function_name(f().index());
-            gc.draw_text_at_cursor(fn.identifier(),line_1,1.0f,fn.color());
-            gc.draw_text_at_cursor(f().cname(),line_1,0.45f,GRAY);
+            gc.draw_text_at_cursor(f().cname(),line_1,1.0f,GRAY);
             gc.draw_text_at_cursor(u8"("sv,line_1,1.0f,WHITE);
             for(std::size_t i=2uz;i<_children.size();++i){
                 if(i > 2uz) gc.draw_text_at_cursor(u8","sv,line_1,1.0f,WHITE);
@@ -273,11 +281,33 @@ namespace sfe{
             gc.line({x,top_y},CURSOR_ACCENT_1,{x,bottom_y},CURSOR_ACCENT_2);
         }
     }
+    void VisualNode::odraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,bool altmode) const{
+        float top_y = pos.y()-gc.ascender();
+        float left_x = pos.x();
+        float right_x;
+        {
+            cppp::fvec2 line_1{pos};
+            const Name& osn = names.get_overload_set_name(o().index());
+            gc.draw_text_at_cursor(osn.identifier(),line_1,1.0f,osn.color());
+            gc.draw_text_at_cursor(u8":"sv,line_1,1.0f,WHITE);
+        }
+        float left = pos.x() + gc.charadvance()*4.0f;
+        for(const VisualNode& c : _children){
+            pos.x() = left;
+            pos.y() += gc.line_height();
+            c.fdraw(gc,errors,names,cursor,pos,altmode);
+        }
+        if(&cursor.selected() == this){
+            float bottom_y = pos.y() - gc.descender();
+            float x = cursor.is_after()?std::max(right_x,pos.x()):left_x;
+            gc.line({x,top_y},CURSOR_ACCENT_1,{x,bottom_y},CURSOR_ACCENT_2);
+        }
+    }
     void VisualNode::pdraw(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,const UICursor& cursor,cppp::fvec2& pos,bool altmode) const{
         CPPP_ASSERT(data.tag() == sfe::VisualNodeType::P);
         float left_x = pos.x();
         for(const auto& ch : _children){
-            ch.fdraw(gc,errors,names,cursor,pos,altmode);
+            ch.odraw(gc,errors,names,cursor,pos,altmode);
             pos.x() = left_x;
             pos.y() += gc.line_height();
         }
