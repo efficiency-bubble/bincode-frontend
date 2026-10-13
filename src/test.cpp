@@ -226,8 +226,8 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
 }
 using hrc = std::chrono::high_resolution_clock;
 using fs = std::chrono::duration<float>;
+std::default_random_engine re;
 class LightningScheduler{
-    std::default_random_engine re;
     float duty;
     std::uniform_real_distribution<float> distrib;
     float next;
@@ -365,7 +365,17 @@ int main(){
     const auto bgn = hrc::now();
     
     LightningScheduler schd{1.0f,7.0f,14.0f};
-    const float lt_dropoff = 199.5f;
+    const float lt_dropoff = 200.0f;
+    
+    std::array<cppp::fvec4,100uz> raindrops;
+    static std::uniform_real_distribution<float> rdvd{120.0f,155.0f};
+    {
+        static std::uniform_real_distribution<float> initial_swd{0.0f,ed.graphics_context().cmap().win_size().x()};
+        static std::uniform_real_distribution<float> initial_shd{0.0f,ed.graphics_context().cmap().win_size().y()};
+        std::ranges::generate(raindrops,[]static -> cppp::fvec4 {
+            return {initial_swd(re),initial_shd(re),-rdvd(re),rdvd(re)};
+        });
+    }
     
     float last_t = 0.0f;
     while(true){
@@ -452,6 +462,21 @@ int main(){
         #ifdef SFE_ENABLE_ACHIEVEMENTS
         adb.queue.render(ed.graphics_context(),{10.0f,10.0f});
         #endif
+        cppp::fvec2 ws = ed.graphics_context().cmap().win_size();
+        std::uniform_real_distribution<float> rdist{0.0f,ws.x()+ws.y()};
+        for(cppp::fvec4& rd : raindrops){
+            rd.x() += dt * rd.z();
+            rd.y() += dt * rd.w();
+            ed.graphics_context().line({rd.x(),rd.y()},{1.0f,1.0f,1.0f,0.33f},{rd.x()+rd.z()*.07f,rd.y()+rd.w()*.07f},{1.0f,1.0f,1.0f,0.33f});
+            if(rd.x() < 0.0f || rd.y() > ws.y()){
+                float strip = rdist(re);
+                if(strip <= ws.x()){
+                    rd = {strip,0.0f,-rdvd(re),rdvd(re)};
+                }else{
+                    rd = {ws.x(),strip-ws.x(),-rdvd(re),rdvd(re)};
+                }
+            }
+        }
         schd.tick(dt);
         if(schd.is_active()){
             float lightning_effect = 0.0f;

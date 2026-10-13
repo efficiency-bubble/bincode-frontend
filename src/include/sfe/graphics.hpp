@@ -101,8 +101,11 @@ namespace sfe{
             void rainbow(cppp::fvec2 start,cppp::fvec2 dims,cppp::fvec3 hsv) const{
                 rb.rainbow(cm,start,dims,hsv);
             }
-            void line(cppp::fvec2 spos,cppp::fvec3 scolor,cppp::fvec2 tpos,cppp::fvec3 tcolor) const{
+            void line(cppp::fvec2 spos,cppp::fvec4 scolor,cppp::fvec2 tpos,cppp::fvec4 tcolor) const{
                 ld.line(cm.cvt_abs(spos),scolor,cm.cvt_abs(tpos),tcolor);
+            }
+            void line(cppp::fvec2 spos,cppp::fvec3 scolor,cppp::fvec2 tpos,cppp::fvec3 tcolor) const{
+                ld.line(cm.cvt_abs(spos),{scolor,1.0f},cm.cvt_abs(tpos),{tcolor,1.0f});
             }
             void rect(cppp::fvec2 pos,cppp::fvec2 size,cppp::fvec3 color) const{
                 mrd.rect(cm.cvt_abs(pos),cm.cvt_rel(size),{color,1.0f});
