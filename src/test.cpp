@@ -233,12 +233,14 @@ class LightningScheduler{
     float next;
     float active = 0.0f;
     std::size_t index;
-    constexpr static std::array<std::span<const float>,6uz> lt_patterns{
+    constexpr static std::array<std::span<const float>,7uz> lt_patterns{
         std::define_static_array(std::array{0.1f,0.4f,0.9f}),
         std::define_static_array(std::array{0.1f,0.7f,0.9f}),
         std::define_static_array(std::array{0.3f}),
         std::define_static_array(std::array{0.2f,0.3f,0.4f,0.9f}),
-        std::define_static_array(std::array{0.1f,0.8f})
+        std::define_static_array(std::array{0.1f,0.8f}),
+        std::define_static_array(std::array{0.1f,0.7f,0.8f}),
+        std::span<const float>{}
     };
     public:
         LightningScheduler(float d,float s,float t) : duty(d), distrib(s,t){
