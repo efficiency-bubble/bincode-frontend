@@ -3,7 +3,7 @@
 #include<string>
 namespace sfe{
     using namespace std::literals;
-    SDFRendererWithTorch::SDFRendererWithTorch() : p(u8"#version 460 core\nlayout(location=0)in vec2 p;layout(location=1)in vec2 t;layout(location=0)out vec2 T;void main(){T=t;gl_Position=vec4(p,0.,1.);}"sv,u8"#version 460 core\nout vec4 C;layout(location=0)in vec2 t;layout(location=0)uniform sampler2D i;layout(location=1)uniform vec4 c;layout(location=2)uniform vec2 m;layout(location=3)uniform float I;layout(origin_upper_left)in vec4 gl_FragCoord;void main(){float v=texture(i,t).r,E=fwidth(v)*.55;C=vec4(c.xyz,c.w*smoothstep(.5-E,.5+E,v)*I/max(1.1,.0009*dot(gl_FragCoord.xy-m,gl_FragCoord.xy-m)));}"sv){
+    SDFRendererWithTorch::SDFRendererWithTorch() : p(u8"#version 460 core\nlayout(location=0)in vec2 p;layout(location=1)in vec2 t;layout(location=0)out vec2 T;void main(){T=t;gl_Position=vec4(p,0.,1.);}"sv,u8"#version 460 core\nout vec4 C;layout(location=0)in vec2 t;layout(location=0)uniform sampler2D i;layout(location=1)uniform vec4 c;layout(location=2)uniform vec2 m;layout(location=3)uniform float I;layout(origin_upper_left)in vec4 gl_FragCoord;void main(){float v=texture(i,t).r,E=fwidth(v)*.55;C=vec4(c.xyz,c.w*smoothstep(.5-E,.5+E,v)/max(1.1,.0004*dot(gl_FragCoord.xy-m,gl_FragCoord.xy-m))/I);}"sv){
         sgl::detail::create_buffer_2_2_4(vao,vbo);
     }
     void SDFRendererWithTorch::draw_stretched(const sgl::Texture<sgl::TextureType::TWO_D>& sdf,cppp::fvec2 pos,cppp::fvec2 size,cppp::fvec4 color,SpookyFlashlight fl) const{

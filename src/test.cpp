@@ -3,6 +3,8 @@
 #include<sfe/style.hpp>
 #include<sfe/builtin-commands.hpp>
 #include<sfe/achievements.hpp>
+#include<sgl/draw/blit.hpp>
+#include<sgl/ext/stbi.hpp>
 #include<cppp/format.hpp>
 #include<cppp/debug.hpp>
 #include<cppp/int.hpp>
@@ -226,7 +228,7 @@ cppp::fvec3 coltype(bbe::type_id tid,const bbe::TypeDatabase& tdb){
 }
 using hrc = std::chrono::high_resolution_clock;
 using fs = std::chrono::duration<float>;
-std::default_random_engine re;
+std::default_random_engine re{std::random_device()()};
 class LightningScheduler{
     float duty;
     std::uniform_real_distribution<float> distrib;
@@ -330,6 +332,8 @@ int main(){
     { // scope for all GL objects. Their dtors must run before we destroy everything with SDL_Quit().
     constexpr cppp::uvec2 SD{1200_u32,600_u32};
     sfe::Window ed{proj,SD,code_font(),0.8f};
+    sgl::ProgramBlitter pblt{u8"#version 460 core\nlayout(location=0)in vec2 p;layout(location=1)in vec2 t;layout(location=0)out vec2 T;void main(){T=t;gl_Position=vec4(p,0.,1.);}"sv,u8"#version 460 core\nout vec4 C;layout(location=0)in vec2 t;layout(location=0)uniform sampler2D i;layout(location=1)uniform vec2 m;layout(location=2)uniform float I;layout(origin_upper_left)in vec4 gl_FragCoord;void main(){C=texture(i,t)/max(1.1,.0004*dot(gl_FragCoord.xy-m,gl_FragCoord.xy-m)/I);}"sv};
+    sgl::Texture<sgl::TextureType::TWO_D> jol{sgl::load_image_stbi(u8"jol.png"sv,true)};
     glClearColor(0.0f,0.0f,0.0f,1.0f);
     glEnable(GL_CULL_FACE);
     glLineWidth(3.0f);
@@ -371,9 +375,11 @@ int main(){
     
     std::array<cppp::fvec4,100uz> raindrops;
     static std::uniform_real_distribution<float> rdvd{120.0f,155.0f};
+    cppp::fvec2 jolpos;
     {
         static std::uniform_real_distribution<float> initial_swd{0.0f,ed.graphics_context().cmap().win_size().x()};
         static std::uniform_real_distribution<float> initial_shd{0.0f,ed.graphics_context().cmap().win_size().y()};
+        jolpos = {initial_swd(re),initial_shd(re)};
         std::ranges::generate(raindrops,[]static -> cppp::fvec4 {
             return {initial_swd(re),initial_shd(re),-rdvd(re),rdvd(re)};
         });
@@ -460,6 +466,9 @@ int main(){
             bbe::type_id rt = an.result_type();
             ed.graphics_context().draw_text(rt==bbe::T_ERROR?u8"error-type"s:proj.names().display_type_name(proj.entities().types()[rt]),{10.0f,winheight_f-8.0f+ed.graphics_context().descender()*DIAG_TEXT_SCALE},DIAG_TEXT_SCALE,coltype(rt,proj.entities().types()));
         }
+        pblt.program().set_uniform(1_u32,ed.graphics_context().flashlight().position());
+        pblt.program().set_uniform(2_u32,ed.graphics_context().flashlight().intensity());
+        pblt.blit_abs(jol,ed.graphics_context().cmap().cvt_abs(jolpos),ed.graphics_context().cmap().cvt_rel({50.0f,-50.0f}));
         ed.render_overlay();
         #ifdef SFE_ENABLE_ACHIEVEMENTS
         adb.queue.render(ed.graphics_context(),{10.0f,10.0f});
@@ -486,6 +495,11 @@ int main(){
                 float diff = reference - schd.time_active();
                 float decay = diff * diff * lt_dropoff;
                 lightning_effect += std::max(0.0f,.95f - decay);
+            }
+            if(!schd.pattern().empty() && schd.time_active() >= schd.pattern()[schd.pattern().size()/2uz]){
+                std::uniform_real_distribution<float> xdist{0.0f,ws.x()};
+                std::uniform_real_distribution<float> ydist{0.0f,ws.y()};
+                jolpos = {xdist(re),ydist(re)};
             }
             ed.graphics_context().rect({0.0f,0.0f},ed.graphics_context().cmap().win_size(),{1.0f,1.0f,1.0f,lightning_effect});
         }

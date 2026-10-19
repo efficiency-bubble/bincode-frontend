@@ -1,7 +1,7 @@
 COMPOPT := -std=c++26 -freflection -flto=auto -fuse-linker-plugin -Wall -Wextra -Wpedantic -Wconversion -DSFE_ENABLE_ACHIEVEMENTS -Wsign-conversion -Wno-maybe-uninitialized -Wnrvo -Werror -m64 -I"src/include" -I"/usr/include/freetype2" -I$(cppinclude) -fconcepts-diagnostics-depth=10
 RELEASEOPT := -O3 -s -DNDEBUG -fcontract-evaluation-semantic=ignore
 DEBUGOPT := -O0 -g -fcontract-evaluation-semantic=enforce -fsanitize=address
-FINALOPT := $(COMPOPT) -L$(cpplibs) -lsgl -lSDL3 -lglad -lfreetype -lfontconfig -lharfbuzz -ltbb
+FINALOPT := $(COMPOPT) -L$(cpplibs) -lsgl -lSDL3 -lglad -lfreetype -lfontconfig -lharfbuzz -ltbb -lstbimage
 LIBNAME := sfe
 HEADERS := $(wildcard src/include/$(LIBNAME)/*.hpp) $(wildcard src/include/$(LIBNAME)/*/*.hpp)
 SOURCES := $(wildcard src/implementation/*.cpp) $(wildcard src/implementation/*/*.cpp)
