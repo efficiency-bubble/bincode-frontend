@@ -18,18 +18,18 @@ namespace sfe{
         UICursor _cursor;
         void navigate(bool right,bool fast);
         public:
-            CodeEntry(VisualNode&& root) : _cursor(std::move(root)){}
+            CodeEntry(ProjectVisualNode&& root) : _cursor(std::move(root)){}
             const bbe::ProjectEntitiesPool& proj() const{
-                return root().p();
+                return root().get();
             }
-            const VisualNode& root() const{
+            const ProjectVisualNode& root() const{
                 return _cursor.root();
             }
-            VisualNode& root(){
+            ProjectVisualNode& root(){
                 return _cursor.root();
             }
             void render_full(const GraphicsContext& gc,const bbe::ErrorDatabase& errors,const NameDatabase& names,cppp::fvec2& pos,bool altmode) const{
-                root().pdraw(gc,errors,names,_cursor,pos,altmode);
+                root().draw(gc,errors,names,_cursor,pos,altmode);
             }
             const UICursor& cursor() const{
                 return _cursor;

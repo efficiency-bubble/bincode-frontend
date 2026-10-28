@@ -1,6 +1,6 @@
 #pragma once
 #include<bbe/project_entity_pool.hpp>
-#include"style.hpp"
+#include"name.hpp"
 namespace sfe{
     class Project{
         bbe::ProjectEntitiesPool decl;

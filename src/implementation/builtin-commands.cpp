@@ -24,18 +24,18 @@ namespace sfe::commands{
     }
     void rename_selection(Window& ed,void*){
         if(ed.code().cursor().selected().type() == VisualNodeType::O){
-            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.project().names().get_overload_set_name(ed.code().cursor().selected().o().index()));
+            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.project().names().get_overload_set_name(ed.code().cursor().selected().o().get().index()));
         }
     }
     void re_cname_selection(Window& ed,void*){
         if(ed.code().cursor().selected().type() == VisualNodeType::F){
-            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.code().cursor().selected().fcname());
+            ed.set_textbox(cppp::uvec3{0,0,10},1.0f /* TODO: actually compute layout */,TextboxTargetType::RAW_STRING,&ed.code().cursor().selected().f().cname());
         }
     }
     void recolor_selection(Window& ed,void*){
         if(ed.code().cursor().selected().type() == VisualNodeType::O){
             ed.remove_textbox();
-            ed.color_picker().open(ed.project().names().get_overload_set_name(ed.code().cursor().selected().o().index()).color());
+            ed.color_picker().open(ed.project().names().get_overload_set_name(ed.code().cursor().selected().o().get().index()).color());
         }
     }
     void save(Window& ed,void*){
@@ -68,7 +68,7 @@ namespace sfe::commands{
             cppp::frozen_byte_view scanner{save};
             ed.project().names() = {ed.project().entities().types(),scanner};
         }
-        ed.code().root().prepopulate();
+        ed.code().root().repopulate();
         ed.code().cursor().home();
     }
     void reset_cursor(Window& ed,void*){
@@ -82,10 +82,10 @@ namespace sfe::commands{
         }
     }
     void inline_function(Window& ed,void*){
-        if(VisualNode& sel = ed.code().cursor().selected();sel.type() == VisualNodeType::A && sel.a().type() == bbe::NodeType::CALL && sel.a().children()[0_u32].type() == bbe::NodeType::FNSYM){
-            const bbe::Function& inlf = ed.project().entities().functions()[sel.a().children()[0_u32].getp32()];
+        if(MutableVisualNodeReference sel = ed.code().cursor().selected();sel.type() == VisualNodeType::A && sel.a().get().type() == bbe::NodeType::CALL && sel.a().get().children()[0_u32].type() == bbe::NodeType::FNSYM){
+            const bbe::Function& inlf = ed.project().entities().functions()[sel.a().get().children()[0_u32].getp32()];
             if(!inlf.is_intrin()){
-                VisualNode::ANodeHandle anh{sel.amodify()};
+                ASTVisualNode::NodeHandle anh{sel.a().modify()};
                 bbe::ASTNode old = std::exchange(*anh,{bbe::NodeType::HAVEVAR,0,2,bbe::uninitialize});
                 anh->children()[0_u32].initialize(std::move(old.children()[1_u32]));
                 inline_transform_initialize(anh->children()[1_u32],inlf.ast());
@@ -102,7 +102,7 @@ namespace sfe::commands{
     }
     void debug_selection(Window& ed,void*){
         if(ed.code().cursor().selected().type() == VisualNodeType::A){
-            cppp::print<u8"{:p} = {}"_ts>(static_cast<const void*>(&ed.code().cursor().selected().a()),std::to_underlying(ed.code().cursor().selected().a().type()));
+            cppp::print<u8"{:p} = {}"_ts>(static_cast<const void*>(&ed.code().cursor().selected().a()),std::to_underlying(ed.code().cursor().selected().a().get().type()));
         }
         std::println();
     }
@@ -187,14 +187,14 @@ namespace sfe::commands{
     void adjc(Window& ed,void* dir){
         bool up = (dir != nullptr);
         for(const auto& elt : ed.code().cursor().path_elements() | std::views::reverse){
-            if(elt.p->type() != VisualNodeType::A) break;
-            if(elt.p->a().type() == bbe::NodeType::COMMA){
+            if(elt.p.type() != VisualNodeType::A) break;
+            if(elt.p.a().get().type() == bbe::NodeType::COMMA){
                 if(up){
-                    elt.p->asetp32(std::saturating_sub(elt.p->a().getp32(),1_u32));
+                    elt.p.a().setp32(std::saturating_sub(elt.p.a().get().getp32(),1_u32));
                 }else{
-                    std::uint32_t newind = elt.p->a().getp32() + 1;
-                    if(newind < elt.p->a().children().size()){
-                        elt.p->asetp32(newind);
+                    std::uint32_t newind = elt.p.a().get().getp32() + 1;
+                    if(newind < elt.p.a().get().children().size()){
+                        elt.p.a().setp32(newind);
                     }
                 }
             }
